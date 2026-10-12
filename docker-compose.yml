@@ -1,0 +1,30 @@
+# Lokalna infrastruktura ReadYou: PostgreSQL z pgvector i Mailpit (przechwytywanie e-maili).
+# Porty nie kolidują z Pulse & Go i są wystawione tylko na 127.0.0.1.
+# 15432 zamiast 5432x: Windows/Hyper-V rezerwuje zakresy 54160–54959.
+name: readyou
+
+services:
+  db:
+    image: pgvector/pgvector:pg17
+    environment:
+      POSTGRES_USER: readyou
+      POSTGRES_PASSWORD: readyou
+      POSTGRES_DB: readyou
+    ports:
+      - "127.0.0.1:15432:5432"
+    volumes:
+      - readyou-db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U readyou -d readyou"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+  mailpit:
+    image: axllent/mailpit:v1.27
+    ports:
+      - "127.0.0.1:1025:1025"
+      - "127.0.0.1:8025:8025"
+
+volumes:
+  readyou-db:

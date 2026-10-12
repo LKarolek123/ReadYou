@@ -1,0 +1,30 @@
+{
+  "name": "readyou",
+  "private": true,
+  "version": "0.1.0",
+  "description": "ReadYou — spersonalizowane artykuły, newsy i wydarzenia",
+  "type": "module",
+  "engines": {
+    "node": ">=22.12"
+  },
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "db:up": "docker compose up -d",
+    "db:down": "docker compose down",
+    "db:migrate": "npm run migrate -w @readyou/api",
+    "dev": "concurrently -n api,worker,web -c magenta,yellow,blue \"npm run dev -w @readyou/api\" \"npm run worker -w @readyou/api\" \"npm run dev -w @readyou/web\"",
+    "build": "npm run build -w @readyou/web",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "test": "vitest run",
+    "worker": "npm run worker:start -w @readyou/api"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.5",
+    "concurrently": "^10.0.6",
+    "typescript": "^5.9.3",
+    "vitest": "^5.0.4"
+  }
+}
