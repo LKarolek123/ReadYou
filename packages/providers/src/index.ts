@@ -12,3 +12,4 @@ export * from './summary.ts';
 export * from './events.ts';
 export * from './event-extract.ts';
 export * from './overpass.ts';
+export * from './report-synth.ts';

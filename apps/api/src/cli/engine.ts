@@ -8,6 +8,7 @@
  *   npm run engine -- usage                     zużycie zapytań Brave (dziś / miesiąc)
  *   npm run engine -- events <miasto> [--search] [--places]   wydarzenia ze stron organizatorów (+ wyszukiwarka, OSM)
  *   npm run engine -- trending                  kanały ogólnopolskie i migawki Trending (newsy, wydarzenia)
+ *   npm run engine -- report <email> [--send] [--force]   raport tygodniowy „na teraz” (podgląd; dev: Mailpit)
  *
  * CSV zawiera wyłącznie dane z kanałów RSS i stron wydawców (nie wyniki wyszukiwarki — regulamin Brave).
  */
@@ -216,7 +217,21 @@ try {
   else if (cmd === 'summarize') await summarizeCmd();
   else if (cmd === 'pool') await poolCmd();
   else if (cmd === 'events') await eventsCmd();
-  else if (cmd === 'trending') console.log(JSON.stringify(await (await import('../engine/trending.ts')).runTrending(provider!)));
+  else if (cmd === 'report') {
+    // Podgląd lokalny: raport „na teraz” (okres bieżącego tygodnia); --send wysyła od razu (dev: Mailpit).
+    const u = await userByEmail(args.find((a) => !a.startsWith('--')));
+    const { generateReport, sendReport, reportPeriod } = await import('../engine/report.ts');
+    const { getReportSynthesizer } = await import('../providers.ts');
+    const tz = (await db.selectFrom('user_profile').select('timezone').where('user_id', '=', u.id).executeTakeFirstOrThrow()).timezone;
+    const now = new Date();
+    if (args.includes('--force')) await db.deleteFrom('weekly_report').where('user_id', '=', u.id).where('period_key', '=', reportPeriod(now, tz).key).execute();
+    const res = await generateReport(u.id, now, getReportSynthesizer());
+    console.log(JSON.stringify(res));
+    if (args.includes('--send') && 'reportId' in res && res.reportId) {
+      const d = await db.selectFrom('email_delivery').select('id').where('report_id', '=', res.reportId).executeTakeFirstOrThrow();
+      console.log(JSON.stringify(await sendReport(d.id)));
+    }
+  } else if (cmd === 'trending')console.log(JSON.stringify(await (await import('../engine/trending.ts')).runTrending(provider!)));
   else if (cmd === 'usage') {
     console.log('Brave:', await usageSummary('brave'), `limity: ${env.BRAVE_DAILY_QUERY_LIMIT}/dzień, ${env.BRAVE_MONTHLY_QUERY_LIMIT}/mies.`);
     console.log('LLM (szacunek USD):', await llmSummary(), `limity: ${env.LLM_DAILY_BUDGET_USD}/dzień, ${env.LLM_MONTHLY_BUDGET_USD}/mies.`);

@@ -26,6 +26,13 @@ export const accountRoutes: FastifyPluginAsync = async (app) => {
       db.selectFrom('interaction').select(['content_id', 'type', 'created_at']).where('user_id', '=', userId).orderBy('created_at').execute(),
       db.selectFrom('daily_assignment').select(['local_day', 'slot', 'content_id', 'kind', 'reason']).where('user_id', '=', userId).orderBy('local_day').orderBy('slot').execute(),
     ]);
+    const reports = await db
+      .selectFrom('weekly_report as r')
+      .leftJoin('email_delivery as d', 'd.report_id', 'r.id')
+      .select(['r.period_key', 'r.subject', 'r.status', 'r.content', 'r.generated_at', 'd.status as delivery', 'd.sent_at'])
+      .where('r.user_id', '=', userId)
+      .orderBy('r.generated_at')
+      .execute();
     const body = {
       exportedAt: new Date().toISOString(),
       account: { ...user, loginMethods: accounts.map((a) => a.providerId) },
@@ -36,6 +43,7 @@ export const accountRoutes: FastifyPluginAsync = async (app) => {
       articles,
       interactions,
       dailyPools: pools,
+      weeklyReports: reports,
     };
     reply.header('content-disposition', 'attachment; filename="readyou-export.json"');
     return body;
@@ -43,7 +51,7 @@ export const accountRoutes: FastifyPluginAsync = async (app) => {
 
   /**
    * Usunięcie konta. Kaskada usuwa profil, zainteresowania i ich wektory, sesje, onboarding, subskrypcję,
-   * polubienia, historię przeczytania, interakcje i dzienne pule.
+   * polubienia, historię przeczytania, interakcje, dzienne pule, raporty tygodniowe i ich wysyłki.
    * Wspólne publiczne treści (katalog węzłów, artykuły, streszczenia) zostają — nie zawierają danych osobowych.
    */
   app.delete('/me', async (request, reply) => {

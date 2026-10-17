@@ -13,11 +13,13 @@ import { claim, complete, fail, pruneJobs } from './jobs/queue.ts';
 import { purgeExpiredText, scheduleDiscovery } from './engine/discovery.ts';
 import { closeEngine } from './engine/context.ts';
 import { getEmbeddingProvider } from './providers.ts';
+import { scheduleReports } from './engine/report.ts';
 
 const workerId = `${hostname()}:${process.pid}:${randomUUID().slice(0, 8)}`;
 const LEASE_MS = 5 * 60_000;
 const PRUNE_EVERY_MS = 60 * 60_000;
 const SCHEDULE_EVERY_MS = 10 * 60_000;
+const REPORTS_EVERY_MS = 5 * 60_000;
 
 let stopping = false;
 for (const sig of ['SIGINT', 'SIGTERM'] as const) {
@@ -36,6 +38,7 @@ async function main() {
   log('info', 'Worker uruchomiony', { kinds: Object.keys(handlers) });
   let lastPrune = 0;
   let lastSchedule = 0;
+  let lastReports = 0;
   while (!stopping) {
     if (Date.now() - lastPrune > PRUNE_EVERY_MS) {
       lastPrune = Date.now();
@@ -44,6 +47,16 @@ async function main() {
       if (pruned || texts) log('info', 'Sprzątanie', { pruned, texts });
     }
     const provider = getEmbeddingProvider();
+    if (Date.now() - lastReports > REPORTS_EVERY_MS) {
+      lastReports = Date.now();
+      // Raporty nie wymagają embeddingów — planujemy je zawsze.
+      try {
+        const reports = await scheduleReports();
+        if (reports) log('info', 'Harmonogram raportów', { reports });
+      } catch (e) {
+        log('warn', 'Harmonogram raportów nieudany', { error: (e as Error).message });
+      }
+    }
     if (provider && Date.now() - lastSchedule > SCHEDULE_EVERY_MS) {
       lastSchedule = Date.now();
       try {

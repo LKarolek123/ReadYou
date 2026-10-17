@@ -336,6 +336,40 @@ interface TrendingItemTable {
   signals: JSONColumnType<Record<string, number>, string, string>;
 }
 
+interface WeeklyReportTable {
+  id: Generated<string>;
+  user_id: string;
+  period_key: string;
+  period_start: Timestamp;
+  period_end: Timestamp;
+  scheduled_for: Timestamp;
+  status: 'ready' | 'empty';
+  subject: string;
+  content: JSONColumnType<import('@readyou/shared').ReportContent, string, string>;
+  html: string;
+  text: string;
+  synthesis_model: string | null;
+  generated_at: Timestamp;
+}
+
+export type DeliveryStatus = 'pending' | 'sending' | 'sent' | 'failed' | 'uncertain' | 'skipped';
+
+interface EmailDeliveryTable {
+  id: Generated<string>;
+  report_id: string;
+  user_id: string;
+  channel: Generated<'email'>;
+  status: Generated<DeliveryStatus>;
+  idempotency_key: string;
+  provider: string | null;
+  provider_message_id: string | null;
+  attempts: Generated<number>;
+  last_error: string | null;
+  created_at: Timestamp;
+  updated_at: Timestamp;
+  sent_at: NullableTimestamp;
+}
+
 export interface Database {
   user: AuthUserTable;
   account: AuthAccountTable;
@@ -361,6 +395,8 @@ export interface Database {
   event_source: EventSourceTable;
   trending_snapshot: TrendingSnapshotTable;
   trending_item: TrendingItemTable;
+  weekly_report: WeeklyReportTable;
+  email_delivery: EmailDeliveryTable;
 }
 
 /** Literał pgvector → wektor JS. */

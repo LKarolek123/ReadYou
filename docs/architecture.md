@@ -86,8 +86,10 @@ Tematy (ścieżki aktywnych zainteresowań, wspólne dla wszystkich osób)
 
 **Trending** (`engine/trending.ts`): co godzinę 9 kanałów RSS → wektory → klastry historii (e5, średnia ≥ 0,89) → niezależne źródła (grupy wydawnicze, przedruki jako jedno) → migawka z dowodami (`trending_snapshot`/`trending_item`). Wydarzenia — osobny ranking z katalogu. Wspólne dla wszystkich; stany per osoba.
 
+**Raport tygodniowy** (`engine/report.ts`): harmonogram w strefie osoby → `generate_report` (~45 min przed terminem; zapis `weekly_report` + `email_delivery` w jednej transakcji) → `send_report` na termin (atomowe `pending → sending`, ponowna kontrola zapisu i adresu, `uncertain` bez ślepego ponowienia). Wypis: token HMAC, hash w `report_subscription`, publiczna ścieżka `/api/unsubscribe` (GET strona, POST wypis, RFC 8058).
+
 **Limit 20**: `daily_assignment` ma klucz (użytkownik, dzień lokalny, slot 1..20) i unikalną parę (użytkownik, treść); wstawianie pod blokadą doradczą.
 
 ## Planowane w etapie 2 (silnik)
 
-`SearchProvider → ContentExtractor → SummaryProvider → EmbeddingProvider`, uczenie z interakcji (promowanie wyuczonych tagów), wydarzenia, Trending, raport tygodniowy. Szczegóły i kandydaci do przeniesienia z Pulse & Go: `implementation-plan.md`.
+Etap 2 zrealizowany: odkrywanie, streszczenia, pula, uczenie, wydarzenia, Trending i raport tygodniowy (szczegóły powyżej i w `implementation-plan.md`).

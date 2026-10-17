@@ -8,9 +8,15 @@ const schema = z.object({
   BETTER_AUTH_SECRET: z.string().min(32, 'BETTER_AUTH_SECRET musi mieć co najmniej 32 znaki'),
   GOOGLE_CLIENT_ID: z.string().optional().transform((v) => v || undefined),
   GOOGLE_CLIENT_SECRET: z.string().optional().transform((v) => v || undefined),
-  EMAIL_PROVIDER: z.enum(['smtp-dev', 'disabled']).default('smtp-dev'),
+  EMAIL_PROVIDER: z.enum(['smtp-dev', 'smtp', 'disabled']).default('smtp-dev'),
   SMTP_HOST: z.string().default('127.0.0.1'),
   SMTP_PORT: z.coerce.number().int().default(1025),
+  // Tylko EMAIL_PROVIDER=smtp (produkcja): dane logowania i TLS.
+  SMTP_USER: z.string().optional().transform((v) => v || undefined),
+  SMTP_PASS: z.string().optional().transform((v) => v || undefined),
+  SMTP_SECURE: z.enum(['true', 'false']).default('false').transform((v) => v === 'true'),
+  // Raport: opóźnienie, po którym nie wysyłamy już piątkowego raportu (np. worker był wyłączony).
+  REPORT_MAX_DELAY_HOURS: z.coerce.number().min(1).default(12),
   EMAIL_FROM: z.string().default('ReadYou <no-reply@readyou.local>'),
   // Embeddingi liczone lokalnie (multilingual-e5-small); `disabled` wyłącza je jawnie.
   EMBEDDING_PROVIDER: z.enum(['e5-local', 'disabled']).default('e5-local'),

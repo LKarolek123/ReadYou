@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
 import { Link, useNavigate } from 'react-router';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   BadgeCheck,
   BookOpen,
@@ -15,7 +15,7 @@ import {
   RotateCcw,
   Trash2,
 } from 'lucide-react';
-import { ACTIVITY_TYPES, TIME_SLOTS, WEEKDAYS, weekdayName, type ActivityType, type ProfilePatch } from '@readyou/shared';
+import { ACTIVITY_TYPES, TIME_SLOTS, WEEKDAYS, weekdayName, type ActivityType, type ProfilePatch, type ReportSummary, type ReportView } from '@readyou/shared';
 import { api, ApiError, type Me } from '../../lib/api.ts';
 import { authClient } from '../../lib/auth-client.ts';
 import { keys, useMe, usePatchProfile, usePatchReport, useReportSubscription } from '../../lib/queries.ts';
@@ -291,12 +291,78 @@ function ReportSection({ me }: { me: Me }) {
                   <CalendarClock className="size-4" aria-hidden /> Następna wysyłka: {next}
                 </p>
               )}
-              <p className="text-xs text-muted">Archiwum raportów pojawi się tutaj po pierwszej wysyłce.</p>
             </div>
           )}
+          <ReportArchive />
         </>
       )}
     </Section>
+  );
+}
+
+const DELIVERY_LABEL: Record<NonNullable<ReportSummary['delivery']>, string> = {
+  pending: 'Czeka na wysyłkę',
+  sending: 'Wysyłanie…',
+  sent: 'Wysłany',
+  failed: 'Nie wysłano',
+  uncertain: 'Wysyłka niepotwierdzona',
+  skipped: 'Nie wysłano',
+};
+
+/** Archiwum raportów (bez nowej zakładki) — treść z zapisu, z linkami do źródeł. */
+function ReportArchive() {
+  const list = useQuery({ queryKey: ['reports'], queryFn: () => api.get<ReportSummary[]>('/me/reports') });
+  const [open, setOpen] = useState<string | null>(null);
+  const report = useQuery({ queryKey: ['report', open], queryFn: () => api.get<ReportView>(`/me/reports/${open}`), enabled: Boolean(open) });
+  if (!list.data?.length) return <p className="mt-4 text-xs text-muted">Archiwum raportów pojawi się tutaj po pierwszym raporcie.</p>;
+  return (
+    <div className="mt-5">
+      <h3 className="text-sm font-semibold">Archiwum raportów</h3>
+      <ul className="mt-2 divide-y divide-line rounded-xl border border-line">
+        {list.data.map((r) => (
+          <li key={r.id}>
+            <button
+              type="button"
+              onClick={() => setOpen(open === r.id ? null : r.id)}
+              aria-expanded={open === r.id}
+              className="flex min-h-12 w-full items-center justify-between gap-3 px-3 py-2 text-left hover:bg-bg"
+            >
+              <span className="min-w-0">
+                <span className="block truncate text-sm font-semibold">{r.subject.replace(/^ReadYou — /, '')}</span>
+                <span className="block text-xs text-muted">
+                  {r.status === 'empty' ? 'Bez pozycji — brak wystarczająco trafnych treści' : r.delivery ? DELIVERY_LABEL[r.delivery] : ''}
+                </span>
+              </span>
+              <ChevronRight className={`size-4 shrink-0 text-muted transition ${open === r.id ? 'rotate-90' : ''}`} aria-hidden />
+            </button>
+            {open === r.id && report.data && (
+              <div className="space-y-3 border-t border-line/60 px-3 py-3 text-sm">
+                <p className="leading-relaxed">{report.data.content.intro}</p>
+                {report.data.content.changes.length > 0 && (
+                  <ul className="list-disc space-y-1 pl-5 text-ink/80">
+                    {report.data.content.changes.map((c) => (
+                      <li key={c.text}>{c.text}</li>
+                    ))}
+                  </ul>
+                )}
+                <ol className="space-y-2">
+                  {report.data.content.items.map((i) => (
+                    <li key={i.contentId}>
+                      <a href={i.url} target="_blank" rel="noopener noreferrer" className="font-semibold hover:text-violet">
+                        {i.title}
+                      </a>
+                      <span className="block text-xs text-muted">
+                        {i.source} · {i.why}
+                      </span>
+                    </li>
+                  ))}
+                </ol>
+              </div>
+            )}
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }
 

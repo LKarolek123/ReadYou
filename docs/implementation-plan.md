@@ -170,9 +170,32 @@ Decyzje podjęte samodzielnie (właściciel zostawił pracę na noc):
 - **Wydarzenia w Trending**: osobny ranking z katalogu wydarzeń (14 dni): liczba różnych stron ogłaszających (ten sam tytuł), dane strukturalne organizatora, znany termin zapisów, bliskość. Cykl sesji pokazujemy raz. Na razie tylko Kraków i w praktyce wszystko „Na radarze” (jedno źródło) — uczciwie oznaczone.
 - Polubienia, streszczenia, przeczytanie i obecność w „Twoich artykułach” działają dla newsów z Trending tak samo jak dla artykułów (`kind = 'news'`).
 
+## Etap 2, krok 8: raport tygodniowy (18.10.2026)
+
+- **Termin**: domyślnie piątek 20:00 w strefie osoby (czas ścienny — poprawnie przez zmiany czasu). Worker co 5 min zleca generację, gdy do terminu zostało ≤ 60 min. Raport powstaje ok. 45 min przed terminem, wysyłka ma `run_at` = termin.
+- **Najpierw zapis, potem wysyłka**: `weekly_report` (unikalny na osobę i okres = tydzień ISO terminu) i `email_delivery` (unikalna na raport i kanał, klucz idempotencji `report:<osoba>:<okres>:email`). Ponowienie zadania nie tworzy drugiego raportu ani wysyłki.
+- **Gwarancja: najwyżej jedna wysyłka, nie „dokładnie jedna”**. Przejęcie `pending → sending` jest atomowe. Błąd przed przekazaniem wiadomości serwerowi (połączenie, DNS, logowanie, odrzucenie MAIL FROM/RCPT TO) jest ponawiany. Każdy inny błąd (np. przerwanie w trakcie DATA) to `uncertain` i nie wysyłamy go ślepo drugi raz. `sending` starsze niż 30 min (awaria procesu) też przechodzi w `uncertain`. Przy zerwanym połączeniu po przyjęciu przez serwer osoba może więc nie dostać raportu, ale nie dostanie go dwa razy. SMTP nie ma idempotencji dostawcy, więc klucz przekazujemy w nagłówku `X-Idempotency-Key` tylko informacyjnie.
+- **Ponowna kontrola tuż przed wysyłką**: raport włączony, adres zweryfikowany, konto istnieje, opóźnienie ≤ `REPORT_MAX_DELAY_HOURS` (12 h). Inaczej `skipped`, a raport zostaje w archiwum.
+- **Treść (≤ 10 różnych pozycji)**:
+  - najpierw polubione i nieprzeczytane z tygodnia;
+  - potem najlepsze z dziennych pul;
+  - do 2 historii z Trending z ≥ 3 niezależnymi źródłami („Ważne w Polsce”);
+  - wydarzenia na 7 dni od terminu, w tym weekend;
+  - do 2 bliskich terminów zapisów.
+
+  Przeczytane i pominięte nie wracają. Ta sama historia trafia do raportu raz (e5 ≥ 0,9), a jeden temat najwyżej 2 razy (po pierwszym przebiegu raport był „tygodniem Tesli”: 5 z 6 newsów). Trwające wydarzenia pokazujemy jako „trwa do …”, a nie z datą otwarcia sprzed miesięcy. Bez statystyk aktywności. Brak treści oznacza raport „pusty” w archiwum, bez wysyłki.
+- **Synteza „co się zmieniło”** (Haiku, `pl-report-v1`): tylko z streszczeń pozycji raportu. Każde zdanie wskazuje pozycje, a zdania bez pozycji z raportu są odrzucane. Koszt ok. 0,001 $ za raport. Bez klucza, budżetu lub przy awarii raport powstaje bez syntezy, z prostym wstępem.
+- **Wypis**: nieprzezroczysty token HMAC (sekret serwera + id osoby), w bazie jego hash. GET pokazuje stronę z przyciskiem, żeby skanery linków w poczcie nie wypisywały nikogo samym otwarciem. POST wypisuje. Nagłówki `List-Unsubscribe` i `List-Unsubscribe-Post` obsługują wypis jednym kliknięciem (RFC 8058); ścieżka ma wyjątek od kontroli Origin. Token pozwala tylko wyłączyć raport.
+- **Archiwum**: Profil → Raport tygodniowy → Archiwum raportów (`GET /me/reports`, `/me/reports/:id`, tylko własne). Raporty są w eksporcie konta i usuwane razem z kontem.
+- **Produkcja**: adapter `EMAIL_PROVIDER=smtp` (dowolna usługa SMTP; wymaga loginu, hasła i prawdziwego nadawcy). Dev: Mailpit.
+
 ## Poza etapem 1 (świadomie niezrobione)
 
-- Silnik treści — zrobione w etapie 2: wyszukiwanie, ekstrakcja, streszczenia, embeddingi, ranking, limit 20, polubienia i przeczytane. Uczenie — krok 5, wydarzenia — krok 6, Trending — krok 7. Do zrobienia: raport tygodniowy.
-- Wysyłka raportów, publiczny endpoint wypisu.
-- Zakładki Artykuły, Wydarzenia i Trending pokazują uczciwe puste stany, bez fikcyjnych kart.
+- Silnik treści — zrobione w etapie 2: wyszukiwanie, ekstrakcja, streszczenia, embeddingi, ranking, limit 20, polubienia i przeczytane. Uczenie — krok 5, wydarzenia — krok 6, Trending — krok 7, raport tygodniowy — krok 8. Etap 2 zamknięty.
 - Moduł płatności nie istnieje i nie powstanie.
+- Otwarte po etapie 2:
+  - rozwijanie własnych zainteresowań przez AI w onboardingu (cache w `interest_node`, `origin='ai'`);
+  - logowanie Google (klucze);
+  - produkcyjny dostawca e-mail;
+  - źródła wydarzeń dla miast innych niż Kraków;
+  - wdrożenie na serwer.

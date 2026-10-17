@@ -13,6 +13,7 @@ import { interestRoutes } from './routes/interests.ts';
 import { reportRoutes } from './routes/report.ts';
 import { accountRoutes } from './routes/account.ts';
 import { feedRoutes } from './routes/feed.ts';
+import { unsubscribeRoutes } from './routes/unsubscribe.ts';
 
 const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
 
@@ -26,12 +27,15 @@ export async function buildServer() {
   });
 
   await app.register(rateLimit, { max: 300, timeWindow: '1 minute' });
+  // Formularz wypisu i POST jednym kliknięciem (treść nieistotna — token jest w adresie).
+  app.addContentTypeParser('application/x-www-form-urlencoded', { parseAs: 'string', bodyLimit: 1024 }, (_req, body, done) => done(null, body));
 
   // CSRF: zmieniające żądania muszą pochodzić z naszego originu (ciasteczka SameSite=Lax + kontrola Origin).
   // Ścieżki Better Auth mają własną kontrolę trustedOrigins.
   const appOrigin = new URL(env.APP_URL).origin;
   app.addHook('onRequest', async (request) => {
-    if (SAFE_METHODS.has(request.method) || request.url.startsWith('/api/auth/')) return;
+    // Wypis z raportu: token z e-maila zamiast sesji, a klient poczty wysyła POST bez Origin (RFC 8058).
+    if (SAFE_METHODS.has(request.method) || request.url.startsWith('/api/auth/') || request.url.startsWith('/api/unsubscribe')) return;
     const origin = request.headers.origin;
     if (origin !== appOrigin) throw new HttpError(403, 'CSRF', 'Niedozwolone źródło żądania');
   });
@@ -97,6 +101,7 @@ export async function buildServer() {
   await app.register(reportRoutes, { prefix: '/api' });
   await app.register(accountRoutes, { prefix: '/api' });
   await app.register(feedRoutes, { prefix: '/api' });
+  await app.register(unsubscribeRoutes, { prefix: '/api' });
 
   return app;
 }

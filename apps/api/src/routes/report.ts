@@ -1,4 +1,6 @@
 import type { FastifyPluginAsync } from 'fastify';
+import { z } from 'zod';
+import type { ReportSummary, ReportView } from '@readyou/shared';
 import { nextReportAt, reportSubscriptionPatchSchema, type ReportSubscription } from '@readyou/shared';
 import { db } from '../db.ts';
 import { HttpError, parse, requireUser } from '../http.ts';
@@ -22,8 +24,40 @@ async function getSubscription(userId: string, emailVerified: boolean): Promise<
   };
 }
 
+const summaryColumns = ['r.id', 'r.period_key', 'r.subject', 'r.status', 'r.generated_at', 'r.scheduled_for', 'd.status as delivery'] as const;
+
+function toSummary(r: { id: string; period_key: string; subject: string; status: 'ready' | 'empty'; generated_at: Date; scheduled_for: Date; delivery: ReportSummary['delivery'] }): ReportSummary {
+  return { id: r.id, periodKey: r.period_key, subject: r.subject, status: r.status, generatedAt: r.generated_at.toISOString(), scheduledFor: r.scheduled_for.toISOString(), delivery: r.delivery };
+}
+
 export const reportRoutes: FastifyPluginAsync = async (app) => {
   app.addHook('preHandler', requireUser);
+
+  /** Archiwum raportów — tylko własne (kontrola właściciela w zapytaniu). */
+  app.get('/me/reports', async (request): Promise<ReportSummary[]> => {
+    const rows = await db
+      .selectFrom('weekly_report as r')
+      .leftJoin('email_delivery as d', 'd.report_id', 'r.id')
+      .select(summaryColumns)
+      .where('r.user_id', '=', request.user.id)
+      .orderBy('r.generated_at', 'desc')
+      .limit(52)
+      .execute();
+    return rows.map(toSummary);
+  });
+
+  app.get('/me/reports/:id', async (request): Promise<ReportView> => {
+    const { id } = parse(z.object({ id: z.uuid() }), request.params);
+    const r = await db
+      .selectFrom('weekly_report as r')
+      .leftJoin('email_delivery as d', 'd.report_id', 'r.id')
+      .select([...summaryColumns, 'r.content'])
+      .where('r.id', '=', id)
+      .where('r.user_id', '=', request.user.id)
+      .executeTakeFirst();
+    if (!r) throw new HttpError(404, 'NOT_FOUND', 'Nie znaleziono raportu');
+    return { ...toSummary(r), content: r.content };
+  });
 
   app.get('/me/report-subscription', async (request) =>
     getSubscription(request.user.id, request.user.emailVerified),

@@ -2,10 +2,12 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
   AnthropicEventExtractor,
+  AnthropicReportSynthesizer,
   AnthropicSummaryProvider,
   E5EmbeddingProvider,
   type EmbeddingProvider,
   type EventExtractor,
+  type ReportSynthesizer,
   type SummaryProvider,
 } from '@readyou/providers';
 import { env } from './env.ts';
@@ -53,4 +55,16 @@ export function getEventExtractor(): EventExtractor | null {
 
 export function setEventExtractor(p: EventExtractor | null) {
   eventExtractor = p;
+}
+
+let reportSynth: ReportSynthesizer | null | undefined;
+
+/** Synteza raportu; null bez klucza — raport powstaje wtedy bez syntezy (z jawną informacją). */
+export function getReportSynthesizer(): ReportSynthesizer | null {
+  if (reportSynth === undefined) reportSynth = env.ANTHROPIC_API_KEY ? new AnthropicReportSynthesizer(env.ANTHROPIC_API_KEY, env.SUMMARY_MODEL) : null;
+  return reportSynth;
+}
+
+export function setReportSynthesizer(p: ReportSynthesizer | null) {
+  reportSynth = p;
 }

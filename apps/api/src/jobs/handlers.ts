@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { ProviderRateLimitError, ProviderUnavailableError, type EmbeddingProvider } from '@readyou/providers';
-import { getEmbeddingProvider, getEventExtractor, getSummaryProvider } from '../providers.ts';
+import { getEmbeddingProvider, getEventExtractor, getReportSynthesizer, getSummaryProvider } from '../providers.ts';
+import { generateReport, REPORT_JOBS, sendReport } from '../engine/report.ts';
 import { EVENT_JOBS, ingestEventSource, ingestPlaces, searchEvents } from '../engine/events.ts';
 import { runTrending, TRENDING_JOB } from '../engine/trending.ts';
 import { SUMMARIZE_JOB, summarizeContent } from '../engine/summaries.ts';
@@ -52,5 +53,10 @@ export const handlers: Record<string, JobHandler> = {
   [EVENT_JOBS.searchEvents]: withEmbeddings((job, p) => searchEvents(z.object({ city: z.string().min(1) }).parse(job.payload).city, p, getEventExtractor())),
   [EVENT_JOBS.ingestPlaces]: withEmbeddings((job, p) => ingestPlaces(z.object({ city: z.string().min(1) }).parse(job.payload).city, p)),
   [TRENDING_JOB]: withEmbeddings(async (_job, p) => ({ ...(await runTrending(p)) })),
+  [REPORT_JOBS.generate]: async (job) => {
+    const { userId, scheduledFor } = z.object({ userId: z.string().min(1), scheduledFor: z.iso.datetime() }).parse(job.payload);
+    return generateReport(userId, new Date(scheduledFor), getReportSynthesizer());
+  },
+  [REPORT_JOBS.send]: async (job) => sendReport(z.object({ deliveryId: z.string().uuid() }).parse(job.payload).deliveryId),
   [JOBS.extractContent]: withEmbeddings((job, p) => extractContent(z.object({ contentId: z.string().uuid() }).parse(job.payload).contentId, p)),
 };
