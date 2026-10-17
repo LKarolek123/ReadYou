@@ -90,6 +90,6 @@ Tematy (ścieżki aktywnych zainteresowań, wspólne dla wszystkich osób)
 
 **Limit 20**: `daily_assignment` ma klucz (użytkownik, dzień lokalny, slot 1..20) i unikalną parę (użytkownik, treść); wstawianie pod blokadą doradczą.
 
-## Planowane w etapie 2 (silnik)
+## Stan etapu 2
 
 Etap 2 zrealizowany: odkrywanie, streszczenia, pula, uczenie, wydarzenia, Trending i raport tygodniowy (szczegóły powyżej i w `implementation-plan.md`).
