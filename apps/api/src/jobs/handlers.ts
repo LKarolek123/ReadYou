@@ -3,6 +3,7 @@ import { ProviderRateLimitError, ProviderUnavailableError, type EmbeddingProvide
 import { getEmbeddingProvider, getSummaryProvider } from '../providers.ts';
 import { SUMMARIZE_JOB, summarizeContent } from '../engine/summaries.ts';
 import { BUILD_POOL_JOB, fillDailyPool } from '../engine/pool.ts';
+import { recomputeLearned, RECOMPUTE_LEARNED_JOB } from '../engine/learning.ts';
 import { EMBED_INTERESTS_JOB, syncInterestEmbeddings } from '../services/embeddings.ts';
 import { extractContent, ingestFeed, JOBS, searchTopic } from '../engine/discovery.ts';
 import { RetryLaterError, type Job } from './queue.ts';
@@ -41,5 +42,6 @@ export const handlers: Record<string, JobHandler> = {
     }
   },
   [BUILD_POOL_JOB]: withEmbeddings(async (job, p) => ({ ...(await fillDailyPool(userPayload.parse(job.payload).userId, p)) })),
+  [RECOMPUTE_LEARNED_JOB]: async (job) => recomputeLearned(userPayload.parse(job.payload).userId),
   [JOBS.extractContent]: withEmbeddings((job, p) => extractContent(z.object({ contentId: z.string().uuid() }).parse(job.payload).contentId, p)),
 };

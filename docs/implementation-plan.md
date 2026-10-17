@@ -136,9 +136,18 @@ Decyzje podjęte samodzielnie (właściciel zostawił pracę na noc):
 - **Streszczenia** (84 × v2): średnio 122 słowa (maks. 158), 1 słusznie odrzucone (strona z 10 słowami). Ręczna weryfikacja faktów na próbce (Chess.com, SnowBrains, Electrek, DEV): liczby, nazwiska i przyczyny zgodne ze źródłem, opinie oddzielone. Częsty szum: zastrzeżenia o reklamach w źródle (EnergySage, FRITZ) — filtrowane przy odczycie, a prompt v3 każe je pomijać.
 - **Tagi AI jako dowód przypisania.** e5 mylił dyscypliny (Liga Mistrzów → „Siatkówka”). Tagi ze streszczenia: tag w poddrzewie potwierdza zainteresowanie; tag w innej gałęzi wyklucza je, chyba że jest niezależny dowód (słowo-klucz, kanał tematyczny — model bywa omylny: symultana Polgar dostała tag `sport.volleyball`); tag ogólniejszy nie rozstrzyga. Własne zainteresowania (spoza taksonomii) przy obecnych tagach wymagają wzmianki nazwy w tekście (wcześniej „giełda” przejmowała artykuł o RAG). Na 98 streszczonych pozycjach w pulach: 12 zmian przypisania, z czego ręcznie oceniłem jako poprawne 10, wątpliwe 2 (kwanty → „Sztuczna inteligencja”, startupy → „rynki finansowe”). Zapisane uzasadnienia w pulach przeliczono.
 
+## Etap 2, krok 5: uczenie z interakcji (18.10.2026)
+
+- **Przeliczanie zamiast przyrostów** (`engine/learning.ts`). Wyuczone tematy liczymy od nowa z bieżących stanów (`user_content_state`: polubienie, przeczytanie) i różnych treści z otwarciem streszczenia lub kliknięciem źródła. Wielokrotne kliknięcia i retransmisje nie zawyżają wag; cofnięcie polubienia wycofuje dokładnie jego wkład. Pominięcie nie wpływa na tematy.
+- **Temat treści** = najbardziej szczegółowe tagi taksonomii z AI-streszczenia (bez streszczenia: węzeł tematu odkrycia).
+- **Wagi** (heurystyka startowa): polubienie 1,0, przeczytanie 0,4, źródło 0,3, streszczenie 0,1; maks. 1,5 na pozycję; wygaszanie e^(−dni/30) od ostatniego sygnału; okno 120 dni.
+- **Etapy**: pierwsze polubienie tworzy ukryty temat (`visible=false`, waga 0,3, w puli najwyżej 1 pozycja). Widocznym tagiem „Na podstawie polubionych treści” staje się po polubieniu 3 różnych pozycji i przy wyniku ≥ 1,5. Poniżej 0,5 temat znika. Słabe sygnały bez polubienia nie tworzą tematu.
+- **Pierwszeństwo**: wykluczony temat i jego poddrzewo nie są uczone, a w puli działają jako twardy filtr (tagi streszczenia, słowa-dowody w tytule, nazwa własnego tematu). Nie uczymy też węzłów pokrytych jawnym wyborem (ten sam węzeł lub przodek jawnego liścia).
+- **Kiedy**: synchronicznie po zmianie stanu w API (błąd uczenia nie psuje zapisu stanu) oraz raz na dobę w workerze (`recompute_learned`, wygaszanie). Nowy lub usunięty temat podbija `profile_version` i zleca wektory.
+
 ## Poza etapem 1 (świadomie niezrobione)
 
-- Silnik treści — zrobione w etapie 2: wyszukiwanie, ekstrakcja, streszczenia, embeddingi, ranking, limit 20, polubienia i przeczytane. Do zrobienia: uczenie z interakcji, Trending, wydarzenia.
+- Silnik treści — zrobione w etapie 2: wyszukiwanie, ekstrakcja, streszczenia, embeddingi, ranking, limit 20, polubienia i przeczytane. Uczenie z interakcji — krok 5. Do zrobienia: Trending, wydarzenia.
 - Wysyłka raportów, publiczny endpoint wypisu.
 - Zakładki Artykuły, Wydarzenia i Trending pokazują uczciwe puste stany, bez fikcyjnych kart.
 - Moduł płatności nie istnieje i nie powstanie.

@@ -78,6 +78,9 @@ interface UserInterestTable {
   state: 'explicit' | 'learned' | 'excluded';
   origin: 'onboarding' | 'manual' | 'behavior';
   weight: Generated<number>;
+  visible: Generated<boolean>;
+  learned_score: number | null;
+  learned_items: number | null;
   created_at: Timestamp;
   updated_at: Timestamp;
 }
@@ -244,7 +247,7 @@ interface DailyAssignmentTable {
   content_id: string;
   kind: 'matched' | 'explore';
   score: number;
-  reason: JSONColumnType<{ interest: string | null; nodeKey?: string | null; margin: number; parts: Record<string, number> }, string, string>;
+  reason: JSONColumnType<{ interest: string | null; nodeKey?: string | null; learned?: boolean; margin: number; parts: Record<string, number> }, string, string>;
   profile_version: number;
   created_at: Timestamp;
 }

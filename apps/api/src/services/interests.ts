@@ -34,6 +34,8 @@ export async function listInterests(userId: string): Promise<Interest[]> {
     .selectFrom('user_interest')
     .select(columns)
     .where('user_id', '=', userId)
+    // Świeżo wyuczone tematy (przed awansem) działają w tle i nie są jeszcze pokazywane jako tagi.
+    .where('visible', '=', true)
     .orderBy('created_at')
     .orderBy('label')
     .execute();

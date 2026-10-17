@@ -428,7 +428,9 @@ export async function scheduleDiscovery(provider: EmbeddingProvider) {
   }
   const pools = await schedulePools();
   const retried = await retryStaleExtractions();
-  return { topics: keys.length, feeds: feeds.size, searches, pools, retried };
+  const { scheduleLearning } = await import('./learning.ts');
+  const learning = await scheduleLearning();
+  return { topics: keys.length, feeds: feeds.size, searches, pools, retried, learning };
 }
 
 /** Usuwa przeterminowany pełny tekst (zostają metadane, wektor i hash). */

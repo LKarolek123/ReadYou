@@ -26,7 +26,7 @@ export interface ArticleCard {
   summaryStatus: 'ready' | 'pending' | 'unavailable';
   state: ContentStateView;
   /** „Dlaczego dla Ciebie” — tylko w Twojej puli, oddzielone od faktów. */
-  why: { kind: 'matched' | 'explore'; interest: string | null } | null;
+  why: { kind: 'matched' | 'explore'; interest: string | null; learned?: boolean } | null;
 }
 
 export interface FeedView {

@@ -14,6 +14,7 @@ import { cleanCaveats } from '@readyou/providers';
 import { db, type InteractionType } from '../db.ts';
 import { env } from '../env.ts';
 import { HttpError } from '../http.ts';
+import { recomputeLearned } from '../engine/learning.ts';
 
 type StateRow = { liked_at: Date | null; read_at: Date | null; skipped_at: Date | null };
 
@@ -65,7 +66,7 @@ async function loadCards(userId: string, ids: string[]): Promise<Map<string, Art
       imageUrl: env.SHOW_SOURCE_IMAGES ? r.image_url : null,
       summaryStatus: r.summary_sufficient === null ? 'pending' : r.summary_sufficient ? 'ready' : 'unavailable',
       state: stateView(r),
-      why: r.kind ? { kind: r.kind, interest: r.reason?.interest ?? null } : null,
+      why: r.kind ? { kind: r.kind, interest: r.reason?.interest ?? null, learned: r.reason?.learned ?? false } : null,
     });
   }
   return out;
@@ -79,7 +80,7 @@ async function ensureContent(contentId: string) {
 /** Ustawia stany; zwraca stan po zmianie. Interakcje tylko dla rzeczywistych zmian. */
 export async function setContentState(userId: string, contentId: string, patch: ContentStatePatch): Promise<ContentStateView> {
   await ensureContent(contentId);
-  return db.transaction().execute(async (trx) => {
+  const { view, events } = await db.transaction().execute(async (trx) => {
     await trx
       .insertInto('user_content_state')
       .values({ user_id: userId, content_id: contentId, updated_at: new Date() })
@@ -115,18 +116,32 @@ export async function setContentState(userId: string, contentId: string, patch: 
         .values(events.map((type) => ({ user_id: userId, content_id: contentId, type, idempotency_key: null, created_at: now })))
         .execute();
     }
-    return stateView(next);
+    return { view: stateView(next), events };
   });
+  // Pominięcie nie zmienia wag tematów; polubienie i przeczytanie (oraz ich cofnięcie) tak.
+  if (events.some((e) => e !== 'skip' && e !== 'unskip')) await relearn(userId);
+  return view;
+}
+
+/** Przeliczenie wyuczonych tematów po zmianie sygnałów. Błąd uczenia nie psuje zapisu stanu. */
+async function relearn(userId: string) {
+  try {
+    await recomputeLearned(userId);
+  } catch (e) {
+    console.warn(JSON.stringify({ level: 'warn', msg: 'Przeliczenie wyuczonych tematów nieudane', error: (e as Error).message }));
+  }
 }
 
 /** Słabe sygnały (otwarcie streszczenia, kliknięcie źródła). Idempotentne po kluczu klienta. */
 export async function logInteraction(userId: string, input: InteractionInput) {
   await ensureContent(input.contentId);
-  await db
+  const res = await db
     .insertInto('interaction')
     .values({ user_id: userId, content_id: input.contentId, type: input.type, idempotency_key: input.idempotencyKey, created_at: new Date() })
     .onConflict((oc) => oc.columns(['user_id', 'idempotency_key']).doNothing())
-    .execute();
+    .executeTakeFirst();
+  // Samo wyświetlenie nie jest oceną; otwarcie streszczenia i kliknięcie źródła to słabe sygnały.
+  if (input.type !== 'exposure' && Number(res.numInsertedOrUpdatedRows ?? 0n) > 0) await relearn(userId);
 }
 
 const encodeCursor = (at: Date, id: string) => Buffer.from(`${at.toISOString()}|${id}`).toString('base64url');

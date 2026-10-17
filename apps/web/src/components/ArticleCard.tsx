@@ -82,7 +82,7 @@ export function WhyBadge({ why }: { why: Card['why'] }) {
       <Compass className="size-3.5" aria-hidden /> Odkrywanie
     </span>
   ) : why.interest ? (
-    <span className="inline-flex max-w-full truncate rounded-full bg-violet-soft px-2.5 py-1 text-xs font-semibold text-violet">{why.interest}</span>
+    <span className="inline-flex max-w-full truncate rounded-full bg-violet-soft px-2.5 py-1 text-xs font-semibold text-violet">{why.learned ? `Z polubień: ${why.interest}` : why.interest}</span>
   ) : null;
 }
 

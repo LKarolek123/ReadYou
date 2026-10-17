@@ -2,7 +2,7 @@
 
 Data: 12.10.2026. Środowisko: Windows 11, Node 22.14, Docker 29.8.
 
-## Testy automatyczne — `npm test` (99/99 ✔, 18.10.2026)
+## Testy automatyczne — `npm test` (111/111 ✔, 18.10.2026)
 
 | Plik | Zakres |
 | --- | --- |
@@ -14,6 +14,7 @@ Data: 12.10.2026. Środowisko: Windows 11, Node 22.14, Docker 29.8.
 | `apps/api/test/engine-relevance.test.ts` | Działy newsowe, bramka dowodów dla liści, powrót do rodzica, konkurencja z przodkiem, bonus kanału, działy pokrywające się z zainteresowaniem; twardy limit zapytań przy 20 równoległych rezerwacjach |
 | `apps/api/test/engine-discovery.test.ts` | Wyszukiwanie na atrapach: zapis metadanych ze strony wydawcy (nic z wyszukiwarki w bazie), brak duplikatów, robots odrzuca stronę, wyczerpany limit zatrzymuje zapytania |
 | `apps/api/test/engine-summaries.test.ts` | Atrapa dostawcy: cache bez ponownego wywołania, nowe streszczenie po zmianie źródła, budżet blokuje wywołanie, błąd zwalnia rezerwację, walidacja (nieznane tagi, długość, brak materiału) |
+| `apps/api/test/learning.test.ts` | Uczenie: najbardziej szczegółowe tagi, ukryty temat po 1 polubieniu i widoczny po 3, słabe sygnały bez polubienia nie tworzą tematu, limit wkładu i wygaszanie, blokada wykluczeń; przez API: wielokrotne serce bez wzrostu wagi, cofnięcie polubienia wycofuje wkład, pominięcie i otwarcie streszczenia bez tematu, wykluczenie wygrywa z uczeniem, reset wyuczonych bez ruszania jawnych; filtr wykluczeń w puli, limit 1 pozycji dla świeżego tematu |
 | `apps/api/test/feed.test.ts` | Pula: 5 równoległych budowań = dokładnie 20 różnych pozycji, odświeżenie nie dodaje ponad limit, przeczytane znikają z „Dla Ciebie” bez zwalniania slotu; Polubione/Przeczytane (wszystkie przejścia stanów), idempotencja polubienia, otwarcie streszczenia/źródła ≠ przeczytanie, pominięcie i cofnięcie bez wykluczania tematu, stronicowanie kursorowe, zmiana dnia, izolacja kont i eksportu, walidacja wejścia (w tym odrzucenie `userId` od klienta) |
 
 Testy API wymagają działającej bazy (`npm run db:up && npm run db:migrate`). Tymczasowe konta są usuwane po teście.

@@ -80,6 +80,8 @@ Tematy (ścieżki aktywnych zainteresowań, wspólne dla wszystkich osób)
 
 **Polubienie i przeczytanie** (`user_content_state`): dwa niezależne znaczniki czasu w jednym wierszu (użytkownik, treść). „Polubione” = `liked_at` i brak `read_at`; „Przeczytane” = `read_at` (niezależnie od polubienia). Żądania ustawiają stan (nie przełączają); interakcja do uczenia zapisuje się w tej samej transakcji tylko przy rzeczywistej zmianie. Pominięcie ukrywa tylko pozycję.
 
+**Uczenie** (`engine/learning.ts`): wyuczone tematy są funkcją bieżących stanów i interakcji (przeliczane, nie inkrementowane). Ukryty temat po 1 polubieniu (waga 0,3, 1 pozycja w puli), widoczny tag po 3. Wykluczenia blokują uczenie i filtrują pulę.
+
 **Limit 20**: `daily_assignment` ma klucz (użytkownik, dzień lokalny, slot 1..20) i unikalną parę (użytkownik, treść); wstawianie pod blokadą doradczą.
 
 ## Planowane w etapie 2 (silnik)

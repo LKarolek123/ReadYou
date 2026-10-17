@@ -116,7 +116,9 @@ export function SummarySheet({ id, onClose }: { id: string; onClose: () => void 
                   <p className="mt-0.5 text-ink/80">
                     {s.why.kind === 'explore'
                       ? `Odkrywanie: temat spoza Twoich tagów, bliski kategorii „${s.why.interest ?? 'Twoje zainteresowania'}”.`
-                      : `Pasuje do Twojego zainteresowania „${s.why.interest}”.`}
+                      : s.why.learned
+                        ? `Na podstawie polubionych treści: temat „${s.why.interest}”.`
+                        : `Pasuje do Twojego zainteresowania „${s.why.interest}”.`}
                   </p>
                 </section>
               )}

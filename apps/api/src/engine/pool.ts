@@ -18,6 +18,8 @@ import { db } from '../db.ts';
 import { env } from '../env.ts';
 import { scheduleSummary } from './summaries.ts';
 import { scoreForUser, type ScoredContent } from './personal.ts';
+import { mentionsLabel } from './relevance.ts';
+import { EVIDENCE } from './sources.ts';
 
 export const POOL_LIMIT = 20;
 export const BUILD_POOL_JOB = 'build_pool';
@@ -57,6 +59,16 @@ export interface Candidate {
   exploreLabel?: string | null;
   /** Węzeł taksonomii zainteresowania (do ilustracji kategorii). */
   nodeKey?: string | null;
+  /** Waga zainteresowania (< 1 dla świeżo wyuczonych) — ogranicza liczbę jego pozycji w puli. */
+  interestWeight?: number;
+  /** Zainteresowanie wyuczone z polubień (do wyjaśnienia „Dlaczego dla Ciebie”). */
+  learned?: boolean;
+}
+
+/** Limit pozycji dla zainteresowania: świeżo wyuczone (waga < 1) dostaje proporcjonalnie mniej, co najmniej 1. */
+export function capFor(c: Pick<Candidate, 'interestWeight'>, cap: number) {
+  const w = c.interestWeight ?? 1;
+  return w >= 1 ? cap : Math.max(1, Math.floor(cap * w));
 }
 
 /** Składniki oceny bez nowości (ta zależy od już wybranych). */
@@ -97,7 +109,7 @@ export function selectDiverse(candidates: Candidate[], slots: number, alreadyPic
       for (let i = 0; i < pool.length; i++) {
         const c = pool[i]!;
         if (kind !== 'any' && c.kind !== kind) continue;
-        if ((perInterest.get(c.interestKey) ?? 0) >= cap) continue;
+        if ((perInterest.get(c.interestKey) ?? 0) >= capFor(c, cap)) continue;
         const maxSim = vectors.length ? Math.max(...vectors.map((v) => cosine(v, c.vector))) : 0;
         if (maxSim >= SAME_STORY_SIM) continue;
         const novelty = clamp01((SAME_STORY_SIM - maxSim) / 0.15);
@@ -178,6 +190,7 @@ export async function fillDailyPool(userId: string, provider: EmbeddingProvider,
           score: c.base,
           reason: JSON.stringify({
             interest: c.kind === 'matched' ? c.item.relevance.interestLabel : c.exploreLabel ?? null,
+            learned: c.learned ?? false,
             nodeKey: c.nodeKey ?? null,
             margin: Number((c.kind === 'matched' ? c.item.relevance.margin : c.item.relevance.looseMargin).toFixed(4)),
             parts: Object.fromEntries(Object.entries(c.parts).map(([k, v]) => [k, Number(v.toFixed(3))])),
@@ -207,6 +220,22 @@ async function assignedVectors(userId: string, day: string, model: string): Prom
   return rows.map((r) => JSON.parse(r.v) as number[]);
 }
 
+/**
+ * Twardy filtr wykluczeń: tag streszczenia w poddrzewie wykluczonego węzła, dowód słowny węzła
+ * w tytule albo nazwa wykluczonego tematu spoza taksonomii w tytule.
+ */
+export function exclusionFilter(excluded: { node_key: string | null; label: string }[]) {
+  return (title: string, tags: readonly string[]) =>
+    excluded.some((e) => {
+      if (e.node_key && getNode(e.node_key)) {
+        if (tags.some((t) => getNode(t)?.path.includes(e.node_key!))) return true;
+        const re = EVIDENCE[e.node_key];
+        return re ? re.test(title) : false;
+      }
+      return mentionsLabel(e.label, title);
+    });
+}
+
 /** Kandydaci: dopasowani (z dowodem) i sąsiedni (eksploracja), bez już przydzielonych, przeczytanych i pominiętych. */
 export async function buildCandidates(userId: string, provider: EmbeddingProvider): Promise<Candidate[]> {
   const { interests, items } = await scoreForUser(userId, provider);
@@ -231,7 +260,7 @@ export async function buildCandidates(userId: string, provider: EmbeddingProvide
     db.selectFrom('content_item').select(['id', 'word_count', 'status']).where('id', 'in', ids).execute(),
     db.selectFrom('content_embedding').select(['content_id', sql<string>`embedding::text`.as('v')]).where('content_id', 'in', ids).where('model', '=', provider.model).execute(),
     db.selectFrom('summary').select(['content_id', 'sufficient', 'tags', 'created_at']).where('content_id', 'in', ids).orderBy('created_at', 'desc').execute(),
-    db.selectFrom('user_interest').select(['id', 'path', 'weight', 'node_key']).where('user_id', '=', userId).execute(),
+    db.selectFrom('user_interest').select(['id', 'path', 'weight', 'node_key', 'state', 'label']).where('user_id', '=', userId).execute(),
   ]);
   const skip = new Set(excluded.map((e) => e.content_id));
   const metaBy = new Map(meta.map((m) => [m.id, m]));
@@ -239,6 +268,7 @@ export async function buildCandidates(userId: string, provider: EmbeddingProvide
   const sumBy = new Map<string, { sufficient: boolean; tags: string[] }>();
   for (const s of summaries) if (!sumBy.has(s.content_id)) sumBy.set(s.content_id, s);
   const interestBy = new Map(userInterests.map((i) => [i.id, i]));
+  const excludedTopic = exclusionFilter(userInterests.filter((i) => i.state === 'excluded'));
   void interests;
 
   const now = Date.now();
@@ -247,6 +277,7 @@ export async function buildCandidates(userId: string, provider: EmbeddingProvide
     if (skip.has(item.id)) continue;
     const s = sumBy.get(item.id);
     if (s && !s.sufficient) continue; // za słaby materiał na streszczenie — nie pokazujemy
+    if (excludedTopic(item.title, s?.tags ?? [])) continue; // wykluczony temat ma pierwszeństwo
     const vector = vecBy.get(item.id);
     const m = metaBy.get(item.id);
     if (!vector || !m) continue;
@@ -269,7 +300,18 @@ export async function buildCandidates(userId: string, provider: EmbeddingProvide
       now,
     );
     if (kind === 'explore' && base < EXPLORE_MIN_BASE) continue;
-    out.push({ item, kind, vector, base, parts, interestKey: kind === 'matched' ? (item.relevance.interestId ?? '?') : 'explore', exploreLabel, nodeKey: (kind === 'matched' ? ui : looseUi)?.node_key ?? null });
+    out.push({
+      item,
+      kind,
+      vector,
+      base,
+      parts,
+      interestKey: kind === 'matched' ? (item.relevance.interestId ?? '?') : 'explore',
+      exploreLabel,
+      nodeKey: (kind === 'matched' ? ui : looseUi)?.node_key ?? null,
+      interestWeight: kind === 'matched' ? (ui?.weight ?? 1) : 1,
+      learned: kind === 'matched' && ui?.state === 'learned',
+    });
   }
   return out;
 }
