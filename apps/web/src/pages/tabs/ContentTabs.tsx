@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router';
 import { Heart, LayoutGrid, Layers, BookOpen } from 'lucide-react';
-import type { ArticleCard } from '@readyou/shared';
+import type { ArticleCard, EventRange } from '@readyou/shared';
 import { useMe, usePatchProfile } from '../../lib/queries.ts';
-import { useFeed, useMyArticles, useSetContentState } from '../../lib/feed.ts';
+import { useEvents, useFeed, useMyArticles, useSetContentState } from '../../lib/feed.ts';
 import { PageHeader } from '../../components/AppShell.tsx';
 import { Alert, Button, Segmented, Spinner } from '../../components/ui.tsx';
 import { ArticleGridCard } from '../../components/ArticleCard.tsx';
@@ -13,7 +13,7 @@ import { EmptyScene, type EmptyKind } from '../../graphics/Scenes.tsx';
 
 /**
  * Zakładki treści. Artykuły: dzienna pula (Grid/Swipe), streszczenia i „Twoje artykuły”.
- * Wydarzenia i Trending: uczciwe puste stany do czasu podłączenia ich źródeł (bez fikcyjnych kart).
+ * Wydarzenia: dziś / tydzień / nadchodzące, kluby i miejsca, zapisane — te same karty co Artykuły.
  */
 
 function ViewToggle() {
@@ -222,29 +222,99 @@ export function ArticlesTab() {
   );
 }
 
+const EVENT_TABS: { value: EventRange; label: string }[] = [
+  { value: 'today', label: 'Dzisiaj' },
+  { value: 'week', label: 'Ten tydzień' },
+  { value: 'upcoming', label: 'Nadchodzące' },
+  { value: 'places', label: 'Kluby i miejsca' },
+  { value: 'saved', label: 'Zapisane' },
+];
+
+const EVENT_EMPTY: Record<EventRange, { title: string; text: string }> = {
+  today: { title: 'Na dziś nic pewnego', text: 'Nie znaleźliśmy dziś wydarzeń z potwierdzonym terminem w Twoim mieście. Zajrzyj do „Ten tydzień” albo „Nadchodzące”.' },
+  week: { title: 'Ten tydzień jest pusty', text: 'Źródła nie podają na ten tydzień wydarzeń z potwierdzonym terminem. Nie dopisujemy wymyślonych.' },
+  upcoming: { title: 'Brak nadchodzących wydarzeń', text: 'Tu pojawią się wydarzenia poza tym tygodniem — zwłaszcza z bliskim końcem zapisów.' },
+  places: { title: 'Brak klubów i miejsc', text: 'Szukamy w OpenStreetMap miejsc związanych z Twoimi tematami (np. szkoły tańca, hackerspace’y). Dla Twoich tagów nic tam nie ma albo dane jeszcze się pobierają.' },
+  saved: { title: 'Nic jeszcze nie zapisano', text: 'Stuknij serce na wydarzeniu lub miejscu, żeby zapisać je na później.' },
+};
+
+/** Wydarzenia: dziś / tydzień / nadchodzące, kluby i miejsca, zapisane. Te same karty i przyciski co Artykuły. */
 export function EventsTab() {
-  const [range, setRange] = useState<'today' | 'week' | 'places'>('today');
+  const me = useMe();
+  const [range, setRange] = useState<EventRange>('today');
+  const [summaryId, setSummaryId] = useState<string | null>(null);
+  const closeSummary = useCallback(() => setSummaryId(null), []);
+  const q = useEvents(range);
+  const setState = useSetContentState();
+  const [undo, setUndo] = useState<ArticleCard | null>(null);
+  const view = me.data?.profile.preferredView ?? 'grid';
+
+  useEffect(() => {
+    if (!undo) return;
+    const t = setTimeout(() => setUndo(null), 6000);
+    return () => clearTimeout(t);
+  }, [undo]);
+
+  const like = (c: ArticleCard) => setState.mutate({ id: c.id, patch: { liked: !c.state.liked } });
+  const skip = range === 'saved' ? undefined : (c: ArticleCard) => {
+    setState.mutate({ id: c.id, patch: { skipped: true } });
+    setUndo(c);
+  };
+  const items = q.data?.items ?? [];
+
   return (
     <>
       <PageHeader title="Wydarzenia" actions={<ViewToggle />}>
-        <Segmented
-          label="Zakres"
-          value={range}
-          onChange={setRange}
-          options={[
-            { value: 'today', label: 'Dzisiaj' },
-            { value: 'week', label: 'Ten tydzień' },
-            { value: 'places', label: 'Kluby i miejsca' },
-          ]}
-        />
+        <nav className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none]" aria-label="Zakres wydarzeń">
+          {EVENT_TABS.map((t) => (
+            <button
+              key={t.value}
+              type="button"
+              aria-pressed={range === t.value}
+              onClick={() => setRange(t.value)}
+              className={`inline-flex min-h-10 shrink-0 items-center rounded-full px-4 text-sm font-semibold ${range === t.value ? 'bg-ink text-white' : 'border border-line bg-surface text-muted'}`}
+            >
+              {t.label}
+            </button>
+          ))}
+        </nav>
       </PageHeader>
       <div className="mx-auto max-w-5xl px-4 lg:px-8">
-        <EngineEmpty
-          kind="events"
-          title="Odkrywanie wydarzeń w przygotowaniu"
-          text="Wydarzenia z Twojego miasta — z datą, ceną i linkiem do zapisów — pojawią się po podłączeniu źródeł wydarzeń."
-        />
+        {q.isLoading ? (
+          <Spinner label="Wczytywanie wydarzeń…" />
+        ) : q.isError ? (
+          <div className="py-8">
+            <Alert tone="error">Nie udało się wczytać wydarzeń. Sprawdź połączenie i spróbuj ponownie.</Alert>
+          </div>
+        ) : (
+          <div className="py-4">
+            {q.data?.notice && <p className="mb-3 text-sm text-muted">{q.data.notice}</p>}
+            {!items.length ? (
+              <EngineEmpty kind={range === 'saved' ? 'saved' : 'events'} title={EVENT_EMPTY[range].title} text={EVENT_EMPTY[range].text} />
+            ) : view === 'swipe' && skip ? (
+              <SwipeDeck items={items} onToggleLike={like} onOpenSummary={(c) => setSummaryId(c.id)} onSkip={skip} />
+            ) : (
+              <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                {items.map((c) => (
+                  <ArticleGridCard key={c.id} card={c} onToggleLike={() => like(c)} onOpenSummary={() => setSummaryId(c.id)} onSkip={skip ? () => skip(c) : undefined} />
+                ))}
+              </div>
+            )}
+            {range === 'places' && items.length > 0 && <p className="mt-6 text-center text-xs text-muted">Dane miejsc: © OpenStreetMap contributors (ODbL).</p>}
+          </div>
+        )}
       </div>
+      {undo && (
+        <Snackbar
+          text={undo.kind === 'event' ? 'Pominięto wydarzenie' : 'Pominięto miejsce'}
+          action="Cofnij"
+          onAction={() => {
+            setState.mutate({ id: undo.id, patch: { skipped: false } });
+            setUndo(null);
+          }}
+        />
+      )}
+      {summaryId && <SummarySheet id={summaryId} onClose={closeSummary} />}
     </>
   );
 }

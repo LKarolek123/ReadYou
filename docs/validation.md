@@ -2,7 +2,7 @@
 
 Data: 12.10.2026. Środowisko: Windows 11, Node 22.14, Docker 29.8.
 
-## Testy automatyczne — `npm test` (111/111 ✔, 18.10.2026)
+## Testy automatyczne — `npm test` (132/132 ✔, 18.10.2026)
 
 | Plik | Zakres |
 | --- | --- |
@@ -15,6 +15,7 @@ Data: 12.10.2026. Środowisko: Windows 11, Node 22.14, Docker 29.8.
 | `apps/api/test/engine-discovery.test.ts` | Wyszukiwanie na atrapach: zapis metadanych ze strony wydawcy (nic z wyszukiwarki w bazie), brak duplikatów, robots odrzuca stronę, wyczerpany limit zatrzymuje zapytania |
 | `apps/api/test/engine-summaries.test.ts` | Atrapa dostawcy: cache bez ponownego wywołania, nowe streszczenie po zmianie źródła, budżet blokuje wywołanie, błąd zwalnia rezerwację, walidacja (nieznane tagi, długość, brak materiału) |
 | `apps/api/test/learning.test.ts` | Uczenie: najbardziej szczegółowe tagi, ukryty temat po 1 polubieniu i widoczny po 3, słabe sygnały bez polubienia nie tworzą tematu, limit wkładu i wygaszanie, blokada wykluczeń; przez API: wielokrotne serce bez wzrostu wagi, cofnięcie polubienia wycofuje wkład, pominięcie i otwarcie streszczenia bez tematu, wykluczenie wygrywa z uczeniem, reset wyuczonych bez ruszania jawnych; filtr wykluczeń w puli, limit 1 pozycji dla świeżego tematu |
+| `apps/api/test/events.test.ts` | Parsery JSON-LD (`@graph`, oferty, online, HTML zakodowany encjami) i iCal (zawijanie, TZID, odwołane), OSM; czas lokalny wokół zmiany czasu 25.10.2026; zakończone/odwołane/bez terminu; nieznana cena ≠ bezpłatne; miasto z adresu; cykle sesji; walidacja cytatami (godzina, data z nagłówka, data z sąsiedniej pozycji odrzucona, cena 0); okna „Dzisiaj”/„Ten tydzień” (półotwarte, DST), trwające wydarzenia, cykle bez sesji, budżet, dostępność; API: filtr miasta i online, „Nadchodzące” z bliskim końcem zapisów, zapisane osobno od „Twoich artykułów”, pominięcie per osoba, osoba bez miasta, walidacja zakresu |
 | `apps/api/test/feed.test.ts` | Pula: 5 równoległych budowań = dokładnie 20 różnych pozycji, odświeżenie nie dodaje ponad limit, przeczytane znikają z „Dla Ciebie” bez zwalniania slotu; Polubione/Przeczytane (wszystkie przejścia stanów), idempotencja polubienia, otwarcie streszczenia/źródła ≠ przeczytanie, pominięcie i cofnięcie bez wykluczania tematu, stronicowanie kursorowe, zmiana dnia, izolacja kont i eksportu, walidacja wejścia (w tym odrzucenie `userId` od klienta) |
 
 Testy API wymagają działającej bazy (`npm run db:up && npm run db:migrate`). Tymczasowe konta są usuwane po teście.
@@ -53,3 +54,10 @@ Znalezione i naprawione podczas sprawdzania:
 - **Interfejs Artykułów (Grid/Swipe, panel streszczenia, Twoje artykuły)**: obejrzany 14.10.2026 w Chrome (Playwright) przy 390 px, 360 px i 1280 px — szczegóły w `implementation-plan.md`, sekcja „Przegląd 14.10.2026”. Nie sprawdzono gestów dotykowych na fizycznym telefonie ani safe area na urządzeniu z wycięciem.
 - **Noc 12/13.10**: laptop bez sieci od ~23:54 — zadania kanałów i ekstrakcji wyczerpały próby. Dodano wznawianie zaległych ekstrakcji i ostateczność błędów 4xx.
 - Raport tygodniowy, wydarzenia, Trending i uczenie z interakcji: kolejne kroki.
+
+## Wydarzenia — sprawdzenia ręczne (18.10.2026)
+
+- **Pobieranie na żywo (Kraków, 11 stron organizatorów)**: Jazz It Up (JSON-LD) 16 wydarzeń w Krakowie, 1 odrzucone poza miastem (Stary Sącz), 31 zakończonych; Tauron Arena 8 (JSON-LD ze stron szczegółów); Teatr Ludowy 17, AGH 19, Kwadrat 10, Alchemia 8, Filharmonia 6, Muzeum Krakowa 3, kalendarium krakow.pl 3 (AI z cytatami). Klub Studio i Na Miasteczku: 0 (lista ładowana skryptem). Jedna strona (AGH) raz zwróciła ucięty JSON modelu — zadanie się ponawia. Koszt AI kilku przebiegów testowych: ~0,05 $.
+- **OSM (Overpass)**: 13 miejsc dla tematów kont deweloperskich (szkoły tańca, hackerspace’y).
+- **Interfejs** (Chrome przez Playwright, 360 px i 1280 px): Dzisiaj / Ten tydzień / Kluby i miejsca, panel szczegółów wydarzenia (Kiedy, Gdzie, Cena, Zapisy, źródło i data weryfikacji), brak błędów konsoli, brak poziomego przewijania. Znalezione i poprawione: HTML zakodowany encjami w opisie (Tauron), sesje cyklu „trwające” do końca cyklu (Jazz It Up), cykliczne spotkania kwiecień–grudzień w „Ten tydzień”, wydarzenie z gminy ościennej z kalendarium krakow.pl, błąd 500 dla osoby bez miasta.
+- **Niesprawdzone**: wyszukiwanie wydarzeń przez Brave (`search_events`) — kod i limity gotowe, bez przebiegu na żywo; trafność dopasowania wydarzeń do zainteresowań oceniona tylko na kilku przykładach.

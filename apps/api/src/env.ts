@@ -43,6 +43,11 @@ const schema = z.object({
   LLM_DAILY_BUDGET_USD: z.coerce.number().min(0).default(0.16),
   LLM_MONTHLY_BUDGET_USD: z.coerce.number().min(0).default(5),
   // Stawki do szacunku kosztu (USD za 1M tokenów). Haiku 5.5: 0,10 / 0,50 (cennik 2026-10).
+  // Wydarzenia: ekstrakcja AI ze stron bez danych strukturalnych (tylko gdy strona się zmieniła)
+  // i wyszukiwanie stron wydarzeń (część dziennego limitu Brave).
+  EVENT_LLM_PAGES_PER_DAY: z.coerce.number().int().min(0).default(15),
+  EVENT_SEARCH_DAILY_QUERIES: z.coerce.number().int().min(0).default(4),
+  EVENT_SEARCH_PAGES_PER_RUN: z.coerce.number().int().min(0).default(8),
   LLM_INPUT_USD_PER_MTOK: z.coerce.number().min(0).default(0.1),
   LLM_OUTPUT_USD_PER_MTOK: z.coerce.number().min(0).default(0.5),
 });

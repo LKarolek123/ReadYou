@@ -3,6 +3,7 @@ import { BookCheck, BookX, ExternalLink, Info, Loader2, Sparkles, X } from 'luci
 import { logInteraction, useSetContentState, useSummary } from '../lib/feed.ts';
 import { Alert } from './ui.tsx';
 import { formatDate, HeartButton } from './ArticleCard.tsx';
+import { EventDetailsBlock, PlaceDetailsBlock } from './EventDetails.tsx';
 
 /**
  * Streszczenie w panelu (dół ekranu na telefonie, okno na komputerze).
@@ -63,14 +64,21 @@ export function SummarySheet({ id, onClose }: { id: string; onClose: () => void 
                 {s.title}
               </h2>
 
-              {s.status === 'pending' && (
+              {s.event && <EventDetailsBlock event={s.event} source={s.source.name} />}
+              {s.place && <PlaceDetailsBlock place={s.place} />}
+
+              {s.status === 'pending' && !s.place && (
                 <div className="mt-4">
                   <Alert tone="info">Streszczenie jest w przygotowaniu. Możesz już przeczytać oryginał.</Alert>
                 </div>
               )}
-              {s.status === 'unavailable' && (
+              {s.status === 'unavailable' && !s.place && (
                 <div className="mt-4">
-                  <Alert tone="warning">Źródło nie zawiera wystarczająco dużo treści na rzetelne streszczenie. Zajrzyj do oryginału.</Alert>
+                  <Alert tone="warning">
+                    {s.event
+                      ? 'Organizator podaje zbyt mało opisu na rzetelne streszczenie — szczegóły powyżej i na stronie wydarzenia.'
+                      : 'Źródło nie zawiera wystarczająco dużo treści na rzetelne streszczenie. Zajrzyj do oryginału.'}
+                  </Alert>
                 </div>
               )}
 
@@ -113,6 +121,15 @@ export function SummarySheet({ id, onClose }: { id: string; onClose: () => void 
               {s.why && (
                 <section className="mt-5 rounded-xl bg-violet-soft/60 px-4 py-3 text-[14px] leading-relaxed">
                   <h3 className="font-bold text-violet">Dlaczego dla Ciebie</h3>
+                  {s.why.reasons?.length ? (
+                    <ul className="mt-1 flex flex-wrap gap-1.5">
+                      {s.why.reasons.map((r) => (
+                        <li key={r} className="rounded-full bg-surface px-2.5 py-1 text-xs font-semibold text-ink/80">
+                          {r}
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
                   <p className="mt-0.5 text-ink/80">
                     {s.why.kind === 'explore'
                       ? `Odkrywanie: temat spoza Twoich tagów, bliski kategorii „${s.why.interest ?? 'Twoje zainteresowania'}”.`
@@ -120,6 +137,7 @@ export function SummarySheet({ id, onClose }: { id: string; onClose: () => void 
                         ? `Na podstawie polubionych treści: temat „${s.why.interest}”.`
                         : `Pasuje do Twojego zainteresowania „${s.why.interest}”.`}
                   </p>
+                  )}
                 </section>
               )}
 
@@ -131,10 +149,22 @@ export function SummarySheet({ id, onClose }: { id: string; onClose: () => void 
                   onClick={() => logInteraction(id, 'source_click')}
                   className="inline-flex min-h-12 flex-1 items-center justify-center gap-2 rounded-xl bg-brand px-5 text-[15px] font-semibold text-white shadow-lift hover:brightness-110"
                 >
-                  Czytaj więcej <ExternalLink className="size-4" aria-hidden />
+                  {s.event ? 'Strona wydarzenia' : s.place ? 'Strona miejsca' : 'Czytaj więcej'} <ExternalLink className="size-4" aria-hidden />
                 </a>
                 <HeartButton liked={s.state.liked} onToggle={() => setState.mutate({ id, patch: { liked: !s.state.liked } })} size="lg" />
               </div>
+              {s.event?.registration.url && s.event.registration.url !== s.source.url && (
+                <a
+                  href={s.event.registration.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={() => logInteraction(id, 'source_click')}
+                  className="mt-3 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl border border-violet/40 px-5 text-[15px] font-semibold text-violet hover:bg-violet-soft/50"
+                >
+                  Bilety / zapisy <ExternalLink className="size-4" aria-hidden />
+                </a>
+              )}
+              {(s.kind === 'article' || s.kind === 'news') && (
               <button
                 type="button"
                 onClick={() => setState.mutate({ id, patch: { read: !s.state.read } })}
@@ -150,6 +180,7 @@ export function SummarySheet({ id, onClose }: { id: string; onClose: () => void 
                   </>
                 )}
               </button>
+              )}
             </>
           )}
         </div>

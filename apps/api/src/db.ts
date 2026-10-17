@@ -151,7 +151,7 @@ interface ContentItemTable {
   published_at: NullableTimestamp;
   author: string | null;
   image_url: string | null;
-  discovered_via: 'feed' | 'search';
+  discovered_via: 'feed' | 'search' | 'organizer' | 'osm';
   feed_url: string | null;
   status: Generated<ContentStatus>;
   status_note: string | null;
@@ -180,7 +180,7 @@ interface ContentEmbeddingTable {
 interface ContentTopicTable {
   content_id: string;
   topic_key: string;
-  via: 'feed' | 'search';
+  via: 'feed' | 'search' | 'organizer' | 'osm';
   relevance: number | null;
   discovered_at: Timestamp;
 }
@@ -252,6 +252,64 @@ interface DailyAssignmentTable {
   created_at: Timestamp;
 }
 
+export type EventMethod = 'json-ld' | 'ical' | 'llm-quotes';
+
+interface EventDetailsTable {
+  content_id: string;
+  starts_at: NullableTimestamp;
+  ends_at: NullableTimestamp;
+  all_day: Generated<boolean>;
+  timezone: Generated<string>;
+  rrule: string | null;
+  venue_name: string | null;
+  address: string | null;
+  city: string | null;
+  city_normalized: string | null;
+  online: Generated<boolean>;
+  price_min: number | null;
+  price_max: number | null;
+  currency: string | null;
+  free: Generated<boolean>;
+  registration_url: string | null;
+  registration_ends_at: NullableTimestamp;
+  availability: string | null;
+  status: string | null;
+  organizer: string | null;
+  method: EventMethod;
+  quotes: JSONColumnType<Record<string, string>, string, string>;
+  source_page: string;
+  verified_at: Timestamp;
+}
+
+interface PlaceDetailsTable {
+  content_id: string;
+  osm_ref: string;
+  category: string;
+  osm_filter: string;
+  node_key: string | null;
+  lat: number;
+  lon: number;
+  address: string | null;
+  website: string | null;
+  opening_hours: string | null;
+  city_normalized: string;
+  price_min: number | null;
+  price_max: number | null;
+  free: Generated<boolean>;
+  verified_at: Timestamp;
+}
+
+interface EventSourceTable {
+  url: string;
+  city_normalized: string;
+  kind: 'ics' | 'page';
+  last_fetched_at: NullableTimestamp;
+  content_hash: string | null;
+  last_status: string | null;
+  events_found: number | null;
+  updated_at: Timestamp;
+}
+
 export interface Database {
   user: AuthUserTable;
   account: AuthAccountTable;
@@ -272,6 +330,9 @@ export interface Database {
   user_content_state: UserContentStateTable;
   interaction: InteractionTable;
   daily_assignment: DailyAssignmentTable;
+  event_details: EventDetailsTable;
+  place_details: PlaceDetailsTable;
+  event_source: EventSourceTable;
 }
 
 /** Literał pgvector → wektor JS. */

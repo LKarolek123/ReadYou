@@ -1,6 +1,7 @@
 import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
-import { contentStatePatchSchema, interactionSchema, type FeedView } from '@readyou/shared';
+import { contentStatePatchSchema, EVENT_RANGES, interactionSchema, type FeedView } from '@readyou/shared';
+import { eventFeed } from '../services/events.ts';
 import { db } from '../db.ts';
 import { parse, requireUser } from '../http.ts';
 import { enqueue } from '../jobs/queue.ts';
@@ -8,6 +9,7 @@ import { BUILD_POOL_JOB, localDay, POOL_LIMIT } from '../engine/pool.ts';
 import { getCard, getSummaryView, listMyArticles, logInteraction, setContentState, todaysCards } from '../services/content.ts';
 
 const idParams = z.object({ id: z.uuid() });
+const eventsQuery = z.object({ range: z.enum(EVENT_RANGES).default('today'), cursor: z.string().max(200).optional() });
 const listQuery = z.object({ state: z.enum(['liked-unread', 'read']).default('liked-unread'), cursor: z.string().max(200).optional() });
 
 /** Zleca budowę/uzupełnienie puli w workerze (deduplikacja per użytkownik i dzień). */
@@ -64,6 +66,14 @@ export const feedRoutes: FastifyPluginAsync = async (app) => {
     await logInteraction(request.user.id, parse(interactionSchema, request.body));
     return reply.status(204).send();
   });
+
+  app.get('/feed/events', async (request) => {
+    const q = parse(eventsQuery, request.query);
+    return eventFeed(request.user.id, q.range, q.cursor);
+  });
+
+  // Zapisane wydarzenia, kluby i miejsca (polubione) — osobno od „Twoich artykułów”.
+  app.get('/me/saved', async (request) => eventFeed(request.user.id, 'saved', parse(z.object({ cursor: z.string().max(200).optional() }), request.query).cursor));
 
   app.get('/me/articles', async (request) => {
     const q = parse(listQuery, request.query);

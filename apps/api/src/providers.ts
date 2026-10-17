@@ -1,6 +1,13 @@
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { AnthropicSummaryProvider, E5EmbeddingProvider, type EmbeddingProvider, type SummaryProvider } from '@readyou/providers';
+import {
+  AnthropicEventExtractor,
+  AnthropicSummaryProvider,
+  E5EmbeddingProvider,
+  type EmbeddingProvider,
+  type EventExtractor,
+  type SummaryProvider,
+} from '@readyou/providers';
 import { env } from './env.ts';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../..');
@@ -34,4 +41,16 @@ export function getSummaryProvider(): SummaryProvider {
 /** Podmiana dostawcy w testach. */
 export function setSummaryProvider(p: SummaryProvider) {
   summary = p;
+}
+
+let eventExtractor: EventExtractor | null | undefined;
+
+/** Ekstraktor wydarzeń (AI z cytatami); null bez klucza — wtedy tylko dane strukturalne. */
+export function getEventExtractor(): EventExtractor | null {
+  if (eventExtractor === undefined) eventExtractor = env.ANTHROPIC_API_KEY ? new AnthropicEventExtractor(env.ANTHROPIC_API_KEY, env.SUMMARY_MODEL) : null;
+  return eventExtractor;
+}
+
+export function setEventExtractor(p: EventExtractor | null) {
+  eventExtractor = p;
 }

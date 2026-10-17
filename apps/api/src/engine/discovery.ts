@@ -86,9 +86,9 @@ export async function syncTopics(provider: EmbeddingProvider) {
   return [...byKey.keys()];
 }
 
-type LoadedTopic = TopicRow & { vector: number[]; ancestors: number[][] };
+export type LoadedTopic = TopicRow & { vector: number[]; ancestors: number[][] };
 
-async function loadTopics(provider: EmbeddingProvider, keys?: string[]): Promise<LoadedTopic[]> {
+export async function loadTopics(provider: EmbeddingProvider, keys?: string[]): Promise<LoadedTopic[]> {
   // Tylko wektory tego samego modelu — nigdy nie porównujemy niekompatybilnych wektorów.
   let q = db
     .selectFrom('topic')
@@ -107,7 +107,7 @@ async function loadTopics(provider: EmbeddingProvider, keys?: string[]): Promise
 
 const asInterest = (t: LoadedTopic): InterestVector => ({ id: t.key, label: t.label, nodeKey: t.node_key, vector: t.vector, ancestors: t.ancestors });
 
-function tooOld(d: Date | null) {
+export function tooOld(d: Date | null) {
   return d !== null && Date.now() - d.getTime() > env.CONTENT_MAX_AGE_DAYS * DAY_MS;
 }
 
@@ -117,7 +117,7 @@ async function existingUrls(urls: string[]): Promise<Set<string>> {
   return new Set(rows.map((r) => r.canonical_url));
 }
 
-async function saveEmbedding(contentId: string, provider: EmbeddingProvider, text: string, vector: number[]) {
+export async function saveEmbedding(contentId: string, provider: EmbeddingProvider, text: string, vector: number[]) {
   await sql`
     insert into content_embedding (content_id, model, dim, source_hash, embedding)
     values (${contentId}, ${provider.model}, ${provider.dim}, ${sha(`${provider.model}\n${text}`)}, ${toPgVector(vector)}::vector)
@@ -125,7 +125,7 @@ async function saveEmbedding(contentId: string, provider: EmbeddingProvider, tex
       source_hash = excluded.source_hash, embedding = excluded.embedding, created_at = now()`.execute(db);
 }
 
-async function linkTopics(contentId: string, via: 'feed' | 'search', links: { key: string; margin: number }[]) {
+export async function linkTopics(contentId: string, via: 'feed' | 'search' | 'organizer' | 'osm', links: { key: string; margin: number }[]) {
   for (const l of links) {
     await db
       .insertInto('content_topic')
@@ -136,7 +136,7 @@ async function linkTopics(contentId: string, via: 'feed' | 'search', links: { ke
 }
 
 /** Marginesy treści względem każdego tematu z listy (do powiązań content_topic). */
-async function topicMargins(vector: number[], topics: LoadedTopic[], provider: EmbeddingProvider, feedUrl: string | null) {
+export async function topicMargins(vector: number[], topics: LoadedTopic[], provider: EmbeddingProvider, feedUrl: string | null) {
   const desks = await deskVectors(provider);
   return topics
     // Katalog przyjmuje treść bliską tematowi bez bramki dowodów (pełny tekst może jeszcze nie być
@@ -430,7 +430,9 @@ export async function scheduleDiscovery(provider: EmbeddingProvider) {
   const retried = await retryStaleExtractions();
   const { scheduleLearning } = await import('./learning.ts');
   const learning = await scheduleLearning();
-  return { topics: keys.length, feeds: feeds.size, searches, pools, retried, learning };
+  const { scheduleEvents } = await import('./events.ts');
+  const events = await scheduleEvents();
+  return { topics: keys.length, feeds: feeds.size, searches, pools, retried, learning, events };
 }
 
 /** Usuwa przeterminowany pełny tekst (zostają metadane, wektor i hash). */

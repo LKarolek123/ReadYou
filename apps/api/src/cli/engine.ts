@@ -6,6 +6,7 @@
  *   npm run engine -- export <email>            CSV do ręcznego oznaczenia (.cache/relevance/*.csv)
  *   npm run engine -- eval <plik.csv>           AUC i precyzja/czułość dla progów na oznaczonym CSV
  *   npm run engine -- usage                     zużycie zapytań Brave (dziś / miesiąc)
+ *   npm run engine -- events <miasto> [--search] [--places]   wydarzenia ze stron organizatorów (+ wyszukiwarka, OSM)
  *
  * CSV zawiera wyłącznie dane z kanałów RSS i stron wydawców (nie wyniki wyszukiwarki — regulamin Brave).
  */
@@ -24,6 +25,24 @@ import { latestSummary, summarizeContent } from '../engine/summaries.ts';
 import { llmSummary } from '../engine/llm-budget.ts';
 import { fillDailyPool } from '../engine/pool.ts';
 import { syncInterestEmbeddings } from '../services/embeddings.ts';
+import { getEventExtractor } from '../providers.ts';
+import { ingestEventSource, ingestPlaces, searchEvents } from '../engine/events.ts';
+import { eventSourcesFor } from '../engine/event-sources.ts';
+
+async function eventsCmd() {
+  const city = args.find((a) => !a.startsWith('--'));
+  if (!city) throw new Error('Podaj miasto');
+  await syncTopics(provider!);
+  for (const s of eventSourcesFor(city)) {
+    try {
+      console.log(JSON.stringify(await ingestEventSource(s.url, city, provider!, getEventExtractor())));
+    } catch (e) {
+      console.log(`✘ ${s.url}: ${(e as Error).message}`);
+    }
+  }
+  if (args.includes('--search')) console.log(JSON.stringify(await searchEvents(city, provider!, getEventExtractor())));
+  if (args.includes('--places')) console.log(JSON.stringify(await ingestPlaces(city, provider!)));
+}
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../../..');
 const [cmd, ...args] = process.argv.slice(2);
@@ -195,6 +214,7 @@ try {
   else if (cmd === 'eval') await evaluate();
   else if (cmd === 'summarize') await summarizeCmd();
   else if (cmd === 'pool') await poolCmd();
+  else if (cmd === 'events') await eventsCmd();
   else if (cmd === 'usage') {
     console.log('Brave:', await usageSummary('brave'), `limity: ${env.BRAVE_DAILY_QUERY_LIMIT}/dzień, ${env.BRAVE_MONTHLY_QUERY_LIMIT}/mies.`);
     console.log('LLM (szacunek USD):', await llmSummary(), `limity: ${env.LLM_DAILY_BUDGET_USD}/dzień, ${env.LLM_MONTHLY_BUDGET_USD}/mies.`);

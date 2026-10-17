@@ -55,6 +55,8 @@ export async function scoreForUser(userId: string, provider: EmbeddingProvider, 
       sql<string[] | null>`(select s.tags from summary s where s.content_id = c.id and s.sufficient order by s.created_at desc limit 1)`.as('summary_tags'),
     ])
     .where('e.model', '=', provider.model)
+    // Dzienna pula to artykuły i newsy; wydarzenia, kluby i miejsca mają własny widok.
+    .where('c.kind', 'in', ['article', 'news'])
     .where('c.status', 'in', statuses as never)
     .where((eb) => eb.or([eb('c.published_at', '>=', since), eb.and([eb('c.published_at', 'is', null), eb('c.created_at', '>=', since)])]))
     .execute();

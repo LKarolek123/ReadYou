@@ -61,6 +61,9 @@ beforeAll(async () => {
   setEngineForTests({
     search: {
       name: searchName,
+      async searchWeb() {
+        return [];
+      },
       async searchNews(_q: SearchQuery) {
         queries++;
         return [hit(1), hit(2), hit(3)];

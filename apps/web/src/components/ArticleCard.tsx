@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { BookOpen, Compass, EyeOff, Heart, MoreHorizontal } from 'lucide-react';
 import type { ArticleCard as Card } from '@readyou/shared';
 import { CategoryIllustration } from '../graphics/CategoryIllustration.tsx';
+import { EventMetaLine } from './EventDetails.tsx';
 
 export function formatDate(iso: string | null): string | null {
   if (!iso) return null;
@@ -32,6 +33,7 @@ export function CardImage({ card, className = '' }: { card: Card; className?: st
 }
 
 export function CardMeta({ card }: { card: Card }) {
+  if (card.event || card.place) return <EventMetaLine card={card} />;
   const parts = [card.source, formatDate(card.publishedAt), card.readingMinutes ? `${card.readingMinutes} min` : null].filter(Boolean);
   return <p className="truncate text-[13px] font-medium text-muted">{parts.join(' · ')}</p>;
 }
@@ -140,7 +142,7 @@ export function ArticleGridCard({
                     }}
                     className="flex min-h-11 w-full items-center gap-2 rounded-lg px-3 text-sm font-medium hover:bg-bg"
                   >
-                    <EyeOff className="size-4" aria-hidden /> Pomiń ten artykuł
+                    <EyeOff className="size-4" aria-hidden /> {card.kind === 'event' ? 'Pomiń to wydarzenie' : card.kind === 'club' || card.kind === 'place' ? 'Pomiń to miejsce' : 'Pomiń ten artykuł'}
                   </button>
                 </div>
               )}

@@ -1,12 +1,22 @@
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query';
-import type { ArticleCard, ContentStatePatch, ContentStateView, FeedView, Paged, SummaryView } from '@readyou/shared';
+import type { ArticleCard, ContentStatePatch, ContentStateView, EventFeedView, EventRange, FeedView, Paged, SummaryView } from '@readyou/shared';
 import { api } from './api.ts';
 
 export const feedKeys = {
   feed: ['feed', 'articles'] as const,
   mine: (list: 'liked-unread' | 'read') => ['my-articles', list] as const,
   summary: (id: string) => ['summary', id] as const,
+  events: (range: EventRange) => ['events', range] as const,
 };
+
+/** Wydarzenia / kluby i miejsca / zapisane. Lista zmienia się wolno — cache 5 min. */
+export function useEvents(range: EventRange) {
+  return useQuery({
+    queryKey: feedKeys.events(range),
+    queryFn: () => api.get<EventFeedView>(`/feed/events?range=${range}`),
+    staleTime: 5 * 60_000,
+  });
+}
 
 /** Dzisiejsza pula. Gdy pula powstaje w tle (status „preparing”), odpytujemy co 3 s. */
 export function useFeed() {
@@ -41,6 +51,9 @@ function patchCaches(qc: QueryClient, id: string, state: Partial<ContentStateVie
   const patchCard = (c: ArticleCard) => (c.id === id ? { ...c, state: { ...c.state, ...state } } : c);
   qc.setQueryData<FeedView>(feedKeys.feed, (f) => (f ? { ...f, items: f.items.map(patchCard) } : f));
   qc.setQueryData<SummaryView>(feedKeys.summary(id), (s) => (s ? { ...s, state: { ...s.state, ...state } } : s));
+  for (const [key, data] of qc.getQueriesData<EventFeedView>({ queryKey: ['events'] })) {
+    if (data) qc.setQueryData(key, { ...data, items: data.items.map(patchCard) });
+  }
 }
 
 export function useSetContentState() {
@@ -55,6 +68,8 @@ export function useSetContentState() {
       qc.invalidateQueries({ queryKey: feedKeys.summary(id) });
       // Przeczytane i pominięte znikają z „Dla Ciebie” — odśwież listę puli.
       if (patch.read !== undefined || patch.skipped !== undefined) qc.invalidateQueries({ queryKey: feedKeys.feed });
+      if (patch.liked !== undefined) qc.invalidateQueries({ queryKey: feedKeys.events('saved') });
+      if (patch.skipped !== undefined) qc.invalidateQueries({ queryKey: ['events'] });
     },
   });
 }

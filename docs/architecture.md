@@ -82,6 +82,8 @@ Tematy (ścieżki aktywnych zainteresowań, wspólne dla wszystkich osób)
 
 **Uczenie** (`engine/learning.ts`): wyuczone tematy są funkcją bieżących stanów i interakcji (przeliczane, nie inkrementowane). Ukryty temat po 1 polubieniu (waga 0,3, 1 pozycja w puli), widoczny tag po 3. Wykluczenia blokują uczenie i filtrują pulę.
 
+**Wydarzenia** (`engine/events.ts`, `services/events.ts`): strony organizatorów per miasto (iCal → JSON-LD → strony szczegółów → AI z cytatami), wyszukiwarka (wyniki w pamięci), OSM dla klubów i miejsc. Wspólny katalog: `content_item` (kind event/club/place) + `event_details` / `place_details`, `event_source` (hash strony). Ranking per osoba w API z powiązań `content_topic`.
+
 **Limit 20**: `daily_assignment` ma klucz (użytkownik, dzień lokalny, slot 1..20) i unikalną parę (użytkownik, treść); wstawianie pod blokadą doradczą.
 
 ## Planowane w etapie 2 (silnik)

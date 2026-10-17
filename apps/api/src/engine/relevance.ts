@@ -55,26 +55,49 @@ const CUSTOM_OVERLAP_SIM = 0.9;
 /** Bonus dla pozycji z kanału tematycznego. Startowa wartość — do strojenia na ocenach (engine eval). */
 export const SOURCE_PRIOR = 0.02;
 
+/**
+ * Działy wydarzeń: konkurencja dla krótkich tytułów wydarzeń. Bez nich „Korn” (koncert w hali sportowej)
+ * trafiał do „Siatkówki”, a koncert — do „Szachów” (18.10.2026, katalog Krakowa).
+ */
+export const EVENT_DESKS: NewsDesk[] = [
+  { text: 'Koncert muzyki pop, rock lub hip-hop', overlaps: ['music'] },
+  { text: 'Koncert jazzowy lub muzyki klasycznej', overlaps: ['music'] },
+  { text: 'Spektakl teatralny, kabaret lub stand-up', overlaps: ['culture'] },
+  { text: 'Wystawa, muzeum, oprowadzanie po wystawie', overlaps: ['culture'] },
+  { text: 'Pokaz filmowy, kino', overlaps: ['culture'] },
+  { text: 'Spotkanie autorskie, literatura, biblioteka', overlaps: ['culture'] },
+  { text: 'Konferencja naukowa, seminarium, wykład akademicki', overlaps: ['science'] },
+  { text: 'Granty i finansowanie badań, szkolenie dla naukowców', overlaps: [] },
+  { text: 'Mecz, zawody sportowe, gala sportów walki', overlaps: ['sport'] },
+  { text: 'Zajęcia dla dzieci i rodzin', overlaps: [] },
+  { text: 'Festiwal, impreza masowa, targi', overlaps: [] },
+  { text: 'Impreza klubowa, DJ, potańcówka', overlaps: ['music', 'dance'] },
+];
+
 export interface DeskVectors {
   model: string;
   vectors: number[][];
+  /** Definicje działów w kolejności wektorów (domyślnie działy newsowe). */
+  defs?: NewsDesk[];
 }
 
 const cachedDesks = new Map<string, Promise<DeskVectors>>();
 
 /** Wektory działów per model (nigdy nie mieszamy wektorów różnych modeli). */
-export function deskVectors(provider: EmbeddingProvider): Promise<DeskVectors> {
-  let p = cachedDesks.get(provider.model);
+export function deskVectors(provider: EmbeddingProvider, set: 'news' | 'events' = 'news'): Promise<DeskVectors> {
+  const defs = set === 'news' ? NEWS_DESKS : [...NEWS_DESKS, ...EVENT_DESKS];
+  const key = `${provider.model}\n${set}`;
+  let p = cachedDesks.get(key);
   if (!p) {
     p = (async () => {
       const vectors: number[][] = [];
-      for (const d of NEWS_DESKS) vectors.push(await provider.embedQuery(d.text));
-      return { model: provider.model, vectors };
+      for (const d of defs) vectors.push(await provider.embedQuery(d.text));
+      return { model: provider.model, vectors, defs };
     })().catch((e) => {
-      cachedDesks.delete(provider.model);
+      cachedDesks.delete(key);
       throw e;
     });
-    cachedDesks.set(provider.model, p);
+    cachedDesks.set(key, p);
   }
   return p;
 }
@@ -111,7 +134,7 @@ export async function ancestorVectors(path: readonly string[], provider: Embeddi
 export function overlappingDesks(interest: InterestVector, desks: DeskVectors): Set<number> {
   const out = new Set<number>();
   const root = interest.nodeKey ? getNode(interest.nodeKey)?.rootId : undefined;
-  NEWS_DESKS.forEach((d, i) => {
+  (desks.defs ?? NEWS_DESKS).forEach((d, i) => {
     if (root && d.overlaps.includes(root)) out.add(i);
     else if (!root && cosine(interest.vector, desks.vectors[i]!) >= CUSTOM_OVERLAP_SIM) out.add(i);
   });
@@ -198,7 +221,7 @@ export function relevance(
     deskSims.forEach((s, i) => {
       if (!skip.has(i) && s > rivalSim) {
         rivalSim = s;
-        rival = NEWS_DESKS[i]!.text;
+        rival = (desks.defs ?? NEWS_DESKS)[i]!.text;
       }
     });
     interest.ancestors.forEach((a, i) => {

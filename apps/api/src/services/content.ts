@@ -10,7 +10,7 @@
 import { sql } from 'kysely';
 import type { ArticleCard, ContentStatePatch, ContentStateView, InteractionInput, Paged, SummaryView } from '@readyou/shared';
 import { getNode, getRoot, type IllustrationKey } from '@readyou/shared';
-import { cleanCaveats } from '@readyou/providers';
+import { cleanCaveats, OSM_ATTRIBUTION } from '@readyou/providers';
 import { db, type InteractionType } from '../db.ts';
 import { env } from '../env.ts';
 import { HttpError } from '../http.ts';
@@ -35,14 +35,26 @@ export function illustrationFor(nodeKeys: (string | null | undefined)[]): Illust
   return 'generic';
 }
 
-/** Wiersze kart dla listy treści (bez filtrowania po użytkowniku — stan dołączany osobno). */
-async function loadCards(userId: string, ids: string[]): Promise<Map<string, ArticleCard>> {
+const num = (v: unknown) => (v === null || v === undefined ? null : Number(v));
+
+/**
+ * Karty dla listy treści ze stanem osoby. `whyBy` — uzasadnienia policzone poza pulą artykułów
+ * (np. ranking wydarzeń); bez niego „Dlaczego dla Ciebie” pochodzi z dziennej puli.
+ */
+export async function loadCards(userId: string, ids: string[], whyBy?: Map<string, ArticleCard['why']>): Promise<Map<string, ArticleCard>> {
   if (!ids.length) return new Map();
   const rows = await db
     .selectFrom('content_item as c')
     .leftJoin('user_content_state as s', (j) => j.onRef('s.content_id', '=', 'c.id').on('s.user_id', '=', userId))
     .leftJoin('daily_assignment as a', (j) => j.onRef('a.content_id', '=', 'c.id').on('a.user_id', '=', userId))
+    .leftJoin('event_details as e', 'e.content_id', 'c.id')
+    .leftJoin('place_details as p', 'p.content_id', 'c.id')
     .select([
+      'c.kind as content_kind', 'e.starts_at', 'e.ends_at', 'e.all_day', 'e.timezone', 'e.rrule', 'e.venue_name', 'e.address as e_address', 'e.city as e_city',
+      'e.online', 'e.price_min as e_price_min', 'e.price_max as e_price_max', 'e.currency', 'e.free as e_free', 'e.registration_url', 'e.registration_ends_at',
+      'e.availability', 'e.status as e_status', 'e.organizer', 'e.method', 'e.verified_at as e_verified',
+      'p.category', 'p.address as p_address', 'p.opening_hours', 'p.website', 'p.osm_ref', 'p.verified_at as p_verified', 'p.node_key as p_node',
+      'p.price_min as p_price_min', 'p.price_max as p_price_max', 'p.free as p_free',
       'c.id', 'c.title', 'c.description', 'c.url', 'c.source_name', 'c.source_domain', 'c.published_at', 'c.word_count', 'c.image_url',
       's.liked_at', 's.read_at', 's.skipped_at', 'a.kind', 'a.reason',
       sql<string | null>`(select card_description from summary sm where sm.content_id = c.id and sm.sufficient order by sm.created_at desc limit 1)`.as('card_description'),
@@ -54,19 +66,57 @@ async function loadCards(userId: string, ids: string[]): Promise<Map<string, Art
     .execute();
   const out = new Map<string, ArticleCard>();
   for (const r of rows) {
+    const price = (min: unknown, max: unknown, free: boolean | null, currency: string | null) =>
+      free ? { min: 0, max: 0, currency: currency ?? 'PLN', free: true } : min === null ? null : { min: num(min), max: num(max), currency: currency ?? 'PLN', free: false };
     out.set(r.id, {
       id: r.id,
+      kind: r.content_kind,
       title: r.title,
       description: r.card_description ?? r.description,
       url: r.url,
       source: r.source_name ?? r.source_domain,
       publishedAt: r.published_at?.toISOString() ?? null,
       readingMinutes: r.word_count && r.word_count >= 150 ? Math.max(1, Math.round(r.word_count / 200)) : null,
-      illustration: illustrationFor([r.reason?.nodeKey, ...(r.tags ?? []), r.topic_node]),
+      illustration: illustrationFor([r.reason?.nodeKey, r.p_node, ...(r.tags ?? []), r.topic_node]),
       imageUrl: env.SHOW_SOURCE_IMAGES ? r.image_url : null,
       summaryStatus: r.summary_sufficient === null ? 'pending' : r.summary_sufficient ? 'ready' : 'unavailable',
       state: stateView(r),
-      why: r.kind ? { kind: r.kind, interest: r.reason?.interest ?? null, learned: r.reason?.learned ?? false } : null,
+      why: whyBy?.get(r.id) ?? (r.kind ? { kind: r.kind, interest: r.reason?.interest ?? null, learned: r.reason?.learned ?? false } : null),
+      ...(r.method
+        ? {
+            event: {
+              startsAt: r.starts_at?.toISOString() ?? null,
+              endsAt: r.ends_at?.toISOString() ?? null,
+              allDay: Boolean(r.all_day),
+              timezone: r.timezone ?? 'Europe/Warsaw',
+              venue: r.venue_name,
+              address: r.e_address,
+              city: r.e_city,
+              online: Boolean(r.online),
+              price: price(r.e_price_min, r.e_price_max, r.e_free, r.currency),
+              registration: { url: r.registration_url, endsAt: r.registration_ends_at?.toISOString() ?? null, availability: r.availability },
+              organizer: r.organizer,
+              method: r.method,
+              verifiedAt: r.e_verified!.toISOString(),
+              status: r.e_status,
+              recurring: Boolean(r.rrule),
+            },
+          }
+        : {}),
+      ...(r.osm_ref
+        ? {
+            place: {
+              category: r.category!,
+              address: r.p_address,
+              openingHours: r.opening_hours,
+              website: r.website,
+              osmUrl: `https://www.openstreetmap.org/${r.osm_ref}`,
+              verifiedAt: r.p_verified!.toISOString(),
+              attribution: OSM_ATTRIBUTION,
+              price: price(r.p_price_min, r.p_price_max, r.p_free, null),
+            },
+          }
+        : {}),
     });
   }
   return out;
@@ -165,6 +215,8 @@ export async function listMyArticles(userId: string, list: 'liked-unread' | 'rea
     .select(['content_id', col])
     .where('user_id', '=', userId)
     .where(col, 'is not', null)
+    // „Twoje artykuły” dotyczą artykułów i newsów; zapisane wydarzenia są w zakładce Wydarzenia.
+    .where('content_id', 'in', (eb) => eb.selectFrom('content_item').select('id').where('kind', 'in', ['article', 'news']))
     .orderBy(col, 'desc')
     .orderBy('content_id', 'desc')
     .limit(limit + 1);
@@ -240,5 +292,8 @@ export async function getSummaryView(userId: string, contentId: string): Promise
     source: { name: card.source, url: card.url, publishedAt: card.publishedAt },
     why: card.why,
     state: card.state,
+    kind: card.kind,
+    ...(card.event ? { event: card.event } : {}),
+    ...(card.place ? { place: card.place } : {}),
   };
 }

@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { ProviderRateLimitError, ProviderUnavailableError, type EmbeddingProvider } from '@readyou/providers';
-import { getEmbeddingProvider, getSummaryProvider } from '../providers.ts';
+import { getEmbeddingProvider, getEventExtractor, getSummaryProvider } from '../providers.ts';
+import { EVENT_JOBS, ingestEventSource, ingestPlaces, searchEvents } from '../engine/events.ts';
 import { SUMMARIZE_JOB, summarizeContent } from '../engine/summaries.ts';
 import { BUILD_POOL_JOB, fillDailyPool } from '../engine/pool.ts';
 import { recomputeLearned, RECOMPUTE_LEARNED_JOB } from '../engine/learning.ts';
@@ -43,5 +44,11 @@ export const handlers: Record<string, JobHandler> = {
   },
   [BUILD_POOL_JOB]: withEmbeddings(async (job, p) => ({ ...(await fillDailyPool(userPayload.parse(job.payload).userId, p)) })),
   [RECOMPUTE_LEARNED_JOB]: async (job) => recomputeLearned(userPayload.parse(job.payload).userId),
+  [EVENT_JOBS.ingestSource]: withEmbeddings((job, p) => {
+    const { url, city } = z.object({ url: z.string().url(), city: z.string().min(1) }).parse(job.payload);
+    return ingestEventSource(url, city, p, getEventExtractor());
+  }),
+  [EVENT_JOBS.searchEvents]: withEmbeddings((job, p) => searchEvents(z.object({ city: z.string().min(1) }).parse(job.payload).city, p, getEventExtractor())),
+  [EVENT_JOBS.ingestPlaces]: withEmbeddings((job, p) => ingestPlaces(z.object({ city: z.string().min(1) }).parse(job.payload).city, p)),
   [JOBS.extractContent]: withEmbeddings((job, p) => extractContent(z.object({ contentId: z.string().uuid() }).parse(job.payload).contentId, p)),
 };
