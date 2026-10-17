@@ -3,7 +3,7 @@ import { Link, useLocation } from 'react-router';
 import { Heart, LayoutGrid, Layers, BookOpen } from 'lucide-react';
 import type { ArticleCard, EventRange } from '@readyou/shared';
 import { useMe, usePatchProfile } from '../../lib/queries.ts';
-import { useEvents, useFeed, useMyArticles, useSetContentState } from '../../lib/feed.ts';
+import { useEvents, useFeed, useMyArticles, useSetContentState, useTrending } from '../../lib/feed.ts';
 import { PageHeader } from '../../components/AppShell.tsx';
 import { Alert, Button, Segmented, Spinner } from '../../components/ui.tsx';
 import { ArticleGridCard } from '../../components/ArticleCard.tsx';
@@ -319,11 +319,25 @@ export function EventsTab() {
   );
 }
 
+/**
+ * Trending w Polsce: newsy (domyślnie) i wydarzenia, osobne rankingi. Uzasadnienie to dowody
+ * (niezależne źródła, „Na radarze”), nigdy wymyślone liczby czytelników.
+ */
 export function TrendingTab() {
+  const me = useMe();
   const [kind, setKind] = useState<'news' | 'events'>('news');
+  const [summaryId, setSummaryId] = useState<string | null>(null);
+  const closeSummary = useCallback(() => setSummaryId(null), []);
+  const q = useTrending(kind);
+  const setState = useSetContentState();
+  const view = me.data?.profile.preferredView ?? 'grid';
+  const items = q.data?.items ?? [];
+  const like = (c: ArticleCard) => setState.mutate({ id: c.id, patch: { liked: !c.state.liked } });
+  const skip = (c: ArticleCard) => setState.mutate({ id: c.id, patch: { skipped: true } });
+
   return (
     <>
-      <PageHeader title="Trending w Polsce">
+      <PageHeader title="Trending w Polsce" actions={<ViewToggle />}>
         <Segmented
           label="Rodzaj"
           value={kind}
@@ -335,12 +349,35 @@ export function TrendingTab() {
         />
       </PageHeader>
       <div className="mx-auto max-w-5xl px-4 lg:px-8">
-        <EngineEmpty
-          kind="trending"
-          title="Trendy pojawią się wkrótce"
-          text="Pokażemy tematy obecne w kilku niezależnych źródłach — bez wymyślonych liczników popularności."
-        />
+        {q.isLoading ? (
+          <Spinner label="Wczytywanie trendów…" />
+        ) : q.isError ? (
+          <div className="py-8">
+            <Alert tone="error">Nie udało się wczytać trendów. Sprawdź połączenie i spróbuj ponownie.</Alert>
+          </div>
+        ) : !items.length ? (
+          <EngineEmpty kind="trending" title="Brak wiarygodnych trendów" text={q.data?.notice ?? 'Źródła nie pozwalają teraz wskazać tematów obecnych w kilku niezależnych mediach.'} />
+        ) : (
+          <div className="py-4">
+            <p className="mb-3 text-sm text-muted">
+              {kind === 'news'
+                ? 'Tematy obecne w kilku niezależnych mediach (grupy wydawnicze, przedruki jednej depeszy liczone raz).'
+                : q.data?.notice}{' '}
+              {q.data?.checkedAt && <>Sprawdzone {new Date(q.data.checkedAt).toLocaleTimeString('pl-PL', { hour: '2-digit', minute: '2-digit' })}.</>}
+            </p>
+            {view === 'swipe' ? (
+              <SwipeDeck items={items} onToggleLike={like} onOpenSummary={(c) => setSummaryId(c.id)} onSkip={skip} />
+            ) : (
+              <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                {items.map((c) => (
+                  <ArticleGridCard key={c.id} card={c} onToggleLike={() => like(c)} onOpenSummary={() => setSummaryId(c.id)} onSkip={() => skip(c)} />
+                ))}
+              </div>
+            )}
+          </div>
+        )}
       </div>
+      {summaryId && <SummarySheet id={summaryId} onClose={closeSummary} />}
     </>
   );
 }

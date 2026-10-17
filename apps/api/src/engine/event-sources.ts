@@ -41,6 +41,8 @@ export const EVENT_SOURCES: Record<string, EventSourceConfig[]> = {
   ],
 };
 
+export const CITY_NAMES: Record<string, string> = { krakow: 'Kraków' };
+
 export const cityKey = (city: string | null | undefined) => (city ? normalizeTag(city) : '');
 
 export function eventSourcesFor(city: string | null | undefined): EventSourceConfig[] {

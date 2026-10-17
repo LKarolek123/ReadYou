@@ -432,6 +432,8 @@ export async function scheduleDiscovery(provider: EmbeddingProvider) {
   const learning = await scheduleLearning();
   const { scheduleEvents } = await import('./events.ts');
   const events = await scheduleEvents();
+  const { scheduleTrending } = await import('./trending.ts');
+  await scheduleTrending();
   return { topics: keys.length, feeds: feeds.size, searches, pools, retried, learning, events };
 }
 

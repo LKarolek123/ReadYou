@@ -310,6 +310,32 @@ interface EventSourceTable {
   updated_at: Timestamp;
 }
 
+interface TrendingSnapshotTable {
+  id: Generated<string>;
+  kind: 'news' | 'events';
+  method: string;
+  items_considered: number;
+  created_at: Timestamp;
+}
+
+export interface TrendingMember {
+  contentId: string;
+  url: string;
+  source: string;
+  group: string;
+  publishedAt: string | null;
+}
+
+interface TrendingItemTable {
+  snapshot_id: string;
+  rank: number;
+  content_id: string;
+  label: 'multi' | 'radar';
+  independent_sources: number;
+  members: JSONColumnType<TrendingMember[], string, string>;
+  signals: JSONColumnType<Record<string, number>, string, string>;
+}
+
 export interface Database {
   user: AuthUserTable;
   account: AuthAccountTable;
@@ -333,6 +359,8 @@ export interface Database {
   event_details: EventDetailsTable;
   place_details: PlaceDetailsTable;
   event_source: EventSourceTable;
+  trending_snapshot: TrendingSnapshotTable;
+  trending_item: TrendingItemTable;
 }
 
 /** Literał pgvector → wektor JS. */

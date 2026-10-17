@@ -7,6 +7,7 @@
  *   npm run engine -- eval <plik.csv>           AUC i precyzja/czułość dla progów na oznaczonym CSV
  *   npm run engine -- usage                     zużycie zapytań Brave (dziś / miesiąc)
  *   npm run engine -- events <miasto> [--search] [--places]   wydarzenia ze stron organizatorów (+ wyszukiwarka, OSM)
+ *   npm run engine -- trending                  kanały ogólnopolskie i migawki Trending (newsy, wydarzenia)
  *
  * CSV zawiera wyłącznie dane z kanałów RSS i stron wydawców (nie wyniki wyszukiwarki — regulamin Brave).
  */
@@ -215,6 +216,7 @@ try {
   else if (cmd === 'summarize') await summarizeCmd();
   else if (cmd === 'pool') await poolCmd();
   else if (cmd === 'events') await eventsCmd();
+  else if (cmd === 'trending') console.log(JSON.stringify(await (await import('../engine/trending.ts')).runTrending(provider!)));
   else if (cmd === 'usage') {
     console.log('Brave:', await usageSummary('brave'), `limity: ${env.BRAVE_DAILY_QUERY_LIMIT}/dzień, ${env.BRAVE_MONTHLY_QUERY_LIMIT}/mies.`);
     console.log('LLM (szacunek USD):', await llmSummary(), `limity: ${env.LLM_DAILY_BUDGET_USD}/dzień, ${env.LLM_MONTHLY_BUDGET_USD}/mies.`);

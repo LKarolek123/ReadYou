@@ -44,6 +44,14 @@ export interface PlaceInfo {
   price: { min: number | null; max: number | null; currency: string; free: boolean } | null;
 }
 
+/** Dowody pozycji Trending: niezależne źródła i czas sprawdzenia — bez liczników popularności. */
+export interface TrendingInfo {
+  label: 'multi' | 'radar';
+  independentSources: number;
+  sources: { name: string; url: string }[];
+  checkedAt: string;
+}
+
 export interface ArticleCard {
   id: string;
   kind: 'article' | 'news' | 'event' | 'club' | 'place';
@@ -64,6 +72,15 @@ export interface ArticleCard {
   why: { kind: 'matched' | 'explore'; interest: string | null; learned?: boolean; reasons?: string[] } | null;
   event?: EventInfo;
   place?: PlaceInfo;
+  trending?: TrendingInfo;
+}
+
+export interface TrendingView {
+  kind: 'news' | 'events';
+  items: ArticleCard[];
+  checkedAt: string | null;
+  method: string | null;
+  notice: string | null;
 }
 
 export const EVENT_RANGES = ['today', 'week', 'upcoming', 'places', 'saved'] as const;
@@ -106,6 +123,7 @@ export interface SummaryView {
   kind: ArticleCard['kind'];
   event?: EventInfo;
   place?: PlaceInfo;
+  trending?: TrendingInfo;
 }
 
 export interface Paged<T> {

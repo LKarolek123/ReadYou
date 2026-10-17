@@ -2,7 +2,7 @@
 
 Data: 12.10.2026. Środowisko: Windows 11, Node 22.14, Docker 29.8.
 
-## Testy automatyczne — `npm test` (132/132 ✔, 18.10.2026)
+## Testy automatyczne — `npm test` (138/138 ✔, 18.10.2026)
 
 | Plik | Zakres |
 | --- | --- |
@@ -16,6 +16,7 @@ Data: 12.10.2026. Środowisko: Windows 11, Node 22.14, Docker 29.8.
 | `apps/api/test/engine-summaries.test.ts` | Atrapa dostawcy: cache bez ponownego wywołania, nowe streszczenie po zmianie źródła, budżet blokuje wywołanie, błąd zwalnia rezerwację, walidacja (nieznane tagi, długość, brak materiału) |
 | `apps/api/test/learning.test.ts` | Uczenie: najbardziej szczegółowe tagi, ukryty temat po 1 polubieniu i widoczny po 3, słabe sygnały bez polubienia nie tworzą tematu, limit wkładu i wygaszanie, blokada wykluczeń; przez API: wielokrotne serce bez wzrostu wagi, cofnięcie polubienia wycofuje wkład, pominięcie i otwarcie streszczenia bez tematu, wykluczenie wygrywa z uczeniem, reset wyuczonych bez ruszania jawnych; filtr wykluczeń w puli, limit 1 pozycji dla świeżego tematu |
 | `apps/api/test/events.test.ts` | Parsery JSON-LD (`@graph`, oferty, online, HTML zakodowany encjami) i iCal (zawijanie, TZID, odwołane), OSM; czas lokalny wokół zmiany czasu 25.10.2026; zakończone/odwołane/bez terminu; nieznana cena ≠ bezpłatne; miasto z adresu; cykle sesji; walidacja cytatami (godzina, data z nagłówka, data z sąsiedniej pozycji odrzucona, cena 0); okna „Dzisiaj”/„Ten tydzień” (półotwarte, DST), trwające wydarzenia, cykle bez sesji, budżet, dostępność; API: filtr miasta i online, „Nadchodzące” z bliskim końcem zapisów, zapisane osobno od „Twoich artykułów”, pominięcie per osoba, osoba bez miasta, walidacja zakresu |
+| `apps/api/test/trending.test.ts` | Grupowanie historii (próg, brak łańcuchowania), niezależność źródeł (ta sama grupa i przedruk = jedno źródło); API: domyślnie newsy, uzasadnienia bez liczb popularności, „Na radarze”, polubiony news w „Twoich artykułach”, pominięcie per osoba, źródła w panelu streszczenia |
 | `apps/api/test/feed.test.ts` | Pula: 5 równoległych budowań = dokładnie 20 różnych pozycji, odświeżenie nie dodaje ponad limit, przeczytane znikają z „Dla Ciebie” bez zwalniania slotu; Polubione/Przeczytane (wszystkie przejścia stanów), idempotencja polubienia, otwarcie streszczenia/źródła ≠ przeczytanie, pominięcie i cofnięcie bez wykluczania tematu, stronicowanie kursorowe, zmiana dnia, izolacja kont i eksportu, walidacja wejścia (w tym odrzucenie `userId` od klienta) |
 
 Testy API wymagają działającej bazy (`npm run db:up && npm run db:migrate`). Tymczasowe konta są usuwane po teście.
@@ -61,3 +62,9 @@ Znalezione i naprawione podczas sprawdzania:
 - **OSM (Overpass)**: 13 miejsc dla tematów kont deweloperskich (szkoły tańca, hackerspace’y).
 - **Interfejs** (Chrome przez Playwright, 360 px i 1280 px): Dzisiaj / Ten tydzień / Kluby i miejsca, panel szczegółów wydarzenia (Kiedy, Gdzie, Cena, Zapisy, źródło i data weryfikacji), brak błędów konsoli, brak poziomego przewijania. Znalezione i poprawione: HTML zakodowany encjami w opisie (Tauron), sesje cyklu „trwające” do końca cyklu (Jazz It Up), cykliczne spotkania kwiecień–grudzień w „Ten tydzień”, wydarzenie z gminy ościennej z kalendarium krakow.pl, błąd 500 dla osoby bez miasta.
 - **Niesprawdzone**: wyszukiwanie wydarzeń przez Brave (`search_events`) — kod i limity gotowe, bez przebiegu na żywo; trafność dopasowania wydarzeń do zainteresowań oceniona tylko na kilku przykładach.
+
+## Trending — sprawdzenia ręczne (18.10.2026)
+
+- **Przebieg na żywo**: 9 kanałów, 270 newsów z 36 h, 166 historii, 33 z ≥ 2 niezależnych grup. Ręczny przegląd 20 pierwszych: każda pozycja to jedna historia; „Wypadek szybowca” spadł po scaleniu przedruków depeszy.
+- **Interfejs** (Chrome przez Playwright, 390 px i 1280 px): Newsy (domyślnie) i Wydarzenia, odznaki „Niezależne źródła: N” / „Na radarze”, panel z listą źródeł i czasem sprawdzenia. Bez błędów konsoli i poziomego przewijania.
+- **Niesprawdzone**: jakość streszczeń newsów z Trending (pobranie stron WP/Onet zależy od robots.txt wydawców); Trending wydarzeń poza Krakowem.

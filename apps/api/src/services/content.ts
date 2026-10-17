@@ -15,6 +15,7 @@ import { db, type InteractionType } from '../db.ts';
 import { env } from '../env.ts';
 import { HttpError } from '../http.ts';
 import { recomputeLearned } from '../engine/learning.ts';
+import { trendingInfoFor } from './trending.ts';
 
 type StateRow = { liked_at: Date | null; read_at: Date | null; skipped_at: Date | null };
 
@@ -272,6 +273,7 @@ export async function getCard(userId: string, contentId: string): Promise<Articl
 /** Zapisane streszczenie (bez wywołania modelu). „Dlaczego dla Ciebie” osobno od faktów. */
 export async function getSummaryView(userId: string, contentId: string): Promise<SummaryView> {
   const card = await getCard(userId, contentId);
+  const trending = card.kind === 'news' || card.kind === 'event' ? await trendingInfoFor(contentId) : undefined;
   const s = await db
     .selectFrom('summary')
     .selectAll()
@@ -295,5 +297,6 @@ export async function getSummaryView(userId: string, contentId: string): Promise
     kind: card.kind,
     ...(card.event ? { event: card.event } : {}),
     ...(card.place ? { place: card.place } : {}),
+    ...(trending ? { trending } : {}),
   };
 }

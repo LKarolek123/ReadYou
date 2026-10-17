@@ -159,9 +159,20 @@ Decyzje podjęte samodzielnie (właściciel zostawił pracę na noc):
 - **Kluby i miejsca**: OpenStreetMap (Overpass), selektory OSM dla wybranych tematów (szkoły tańca, kluby szachowe, ścianki, hackerspace’y, biblioteki, muzea, teatry…), raz w tygodniu na miasto, z atrybucją ODbL. Pokazujemy tylko miejsca związane z tematami osoby. Kraków (18.10): 13 miejsc (taniec, hackerspace); klubów szachowych OSM w Krakowie nie oznacza.
 - **„Twoje artykuły”** i dzienna pula obejmują tylko artykuły i newsy; zapisane wydarzenia i miejsca są w Wydarzenia → Zapisane (`GET /me/saved`).
 
+## Etap 2, krok 7: Trending w Polsce (18.10.2026)
+
+- **Źródła newsów**: 9 darmowych kanałów RSS (WP, money.pl, Onet, RMF24, TVN24, Polsat News, Interia, Gazeta.pl, Bankier.pl), sprawdzonych 18.10.2026. Nie działały: PAP (pusty kanał), rp.pl (nieobsługiwany typ treści), Radio ZET, TVP Info, DW (404). Pobieranie co godzinę, okno 36 h, bez pobierania stron (strony tylko dla czołówki — do streszczeń).
+- **Niezależność**: liczymy grupy wydawnicze, nie portale (WP = WP + money.pl; Polsat = Polsat News + Interia). Niemal identyczne teksty (e5 ≥ 0,975, np. ta sama depesza w kilku portalach) łączą się w jedno źródło — przedruk nie jest drugim potwierdzeniem.
+- **Grupowanie historii**: kalibracja na ~210 nagłówkach z 7 portali (36 h): pary ≥ 0,89 to ta sama historia, ok. 0,88 łączy już różne wypowiedzi tej samej osoby (Zełenski). Reguła: średnie podobieństwo do klastra ≥ 0,89 i minimum ≥ 0,85 (bez łańcuchowania).
+- **Ranking**: liczba niezależnych źródeł + 0,5 × świeżość. Najpierw historie z ≥ 2 źródeł („Obecne w N niezależnych źródłach”), do 5 pozycji jednoźródłowych tylko jako uzupełnienie („Na radarze”). Bez liczników czytelników i wyświetleń. Sekcji „najpopularniejsze” portali nie używamy — nie znaleźliśmy kanałów, które by je udostępniały zgodnie z zasadami.
+- **Migawki** (`trending_snapshot`, `trending_item`): metoda, czas sprawdzenia, członkowie klastra z URL-ami i składniki oceny; zostają 48 h. Pierwszy przebieg (18.10, 01:40): 270 newsów, 166 historii, 33 z kilku źródeł; czołówka: atak na dyplomatów na Zachodnim Brzegu (7 źródeł), konwencja Rozwoju Plus (6), drony nad Rumunią (5).
+- **Streszczenia**: dla 10 pierwszych historii — pobranie strony (robots.txt) i streszczenie w budżecie LLM; przedstawicielem klastra jest pozycja ze streszczeniem lub pobraną stroną.
+- **Wydarzenia w Trending**: osobny ranking z katalogu wydarzeń (14 dni): liczba różnych stron ogłaszających (ten sam tytuł), dane strukturalne organizatora, znany termin zapisów, bliskość. Cykl sesji pokazujemy raz. Na razie tylko Kraków i w praktyce wszystko „Na radarze” (jedno źródło) — uczciwie oznaczone.
+- Polubienia, streszczenia, przeczytanie i obecność w „Twoich artykułach” działają dla newsów z Trending tak samo jak dla artykułów (`kind = 'news'`).
+
 ## Poza etapem 1 (świadomie niezrobione)
 
-- Silnik treści — zrobione w etapie 2: wyszukiwanie, ekstrakcja, streszczenia, embeddingi, ranking, limit 20, polubienia i przeczytane. Uczenie — krok 5, wydarzenia — krok 6. Do zrobienia: Trending, raport tygodniowy.
+- Silnik treści — zrobione w etapie 2: wyszukiwanie, ekstrakcja, streszczenia, embeddingi, ranking, limit 20, polubienia i przeczytane. Uczenie — krok 5, wydarzenia — krok 6, Trending — krok 7. Do zrobienia: raport tygodniowy.
 - Wysyłka raportów, publiczny endpoint wypisu.
 - Zakładki Artykuły, Wydarzenia i Trending pokazują uczciwe puste stany, bez fikcyjnych kart.
 - Moduł płatności nie istnieje i nie powstanie.

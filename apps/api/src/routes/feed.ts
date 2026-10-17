@@ -2,6 +2,7 @@ import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
 import { contentStatePatchSchema, EVENT_RANGES, interactionSchema, type FeedView } from '@readyou/shared';
 import { eventFeed } from '../services/events.ts';
+import { getTrending } from '../services/trending.ts';
 import { db } from '../db.ts';
 import { parse, requireUser } from '../http.ts';
 import { enqueue } from '../jobs/queue.ts';
@@ -66,6 +67,8 @@ export const feedRoutes: FastifyPluginAsync = async (app) => {
     await logInteraction(request.user.id, parse(interactionSchema, request.body));
     return reply.status(204).send();
   });
+
+  app.get('/trending', async (request) => getTrending(request.user.id, parse(z.object({ kind: z.enum(['news', 'events']).default('news') }), request.query).kind));
 
   app.get('/feed/events', async (request) => {
     const q = parse(eventsQuery, request.query);

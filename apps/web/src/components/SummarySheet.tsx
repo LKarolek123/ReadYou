@@ -118,7 +118,28 @@ export function SummarySheet({ id, onClose }: { id: string; onClose: () => void 
                 </>
               )}
 
-              {s.why && (
+              {s.trending && (
+                <section className="mt-5 rounded-xl border border-line bg-bg px-4 py-3 text-[14px] leading-relaxed">
+                  <h3 className="font-bold">
+                    {s.trending.label === 'multi' ? `Dlaczego w Trending: niezależne źródła (${s.trending.independentSources})` : 'Na radarze — na razie jedno źródło'}
+                  </h3>
+                  <ul className="mt-1.5 flex flex-wrap gap-1.5">
+                    {s.trending.sources.map((src) => (
+                      <li key={src.url}>
+                        <a href={src.url} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-8 items-center rounded-full bg-surface px-2.5 text-xs font-semibold text-ink/80 underline-offset-2 hover:underline">
+                          {src.name}
+                        </a>
+                      </li>
+                    ))}
+                  </ul>
+                  <p className="mt-1.5 text-xs text-muted">
+                    Bez liczników popularności — liczymy niezależne redakcje (przedruki jednej depeszy jako jedno źródło). Sprawdzone{' '}
+                    {new Date(s.trending.checkedAt).toLocaleString('pl-PL', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}.
+                  </p>
+                </section>
+              )}
+
+              {s.why && !s.trending && (
                 <section className="mt-5 rounded-xl bg-violet-soft/60 px-4 py-3 text-[14px] leading-relaxed">
                   <h3 className="font-bold text-violet">Dlaczego dla Ciebie</h3>
                   {s.why.reasons?.length ? (

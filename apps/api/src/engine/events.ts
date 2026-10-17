@@ -44,7 +44,7 @@ import { enqueue } from '../jobs/queue.ts';
 import { engine } from './context.ts';
 import { contentText, deskVectors, relevance } from './relevance.ts';
 import { activeTopics, linkTopics, loadTopics, saveEmbedding, type LoadedTopic } from './discovery.ts';
-import { cityKey, DETAIL_LINK, eventQueriesFor, eventSourcesFor, EVENT_SOURCES } from './event-sources.ts';
+import { CITY_NAMES, cityKey, DETAIL_LINK, eventQueriesFor, eventSourcesFor, EVENT_SOURCES } from './event-sources.ts';
 import { estimateCostUsd, reserveLlm, settleLlm } from './llm-budget.ts';
 import { reserveCall } from './usage.ts';
 
@@ -658,4 +658,5 @@ export async function scheduleEvents() {
   return { cities: cities.length, sources };
 }
 
-export const configuredCities = () => Object.keys(EVENT_SOURCES);
+/** Nazwy miast ze skonfigurowanymi źródłami (do komunikatów). */
+export const configuredCities = () => Object.keys(EVENT_SOURCES).map((k) => CITY_NAMES[k] ?? k);

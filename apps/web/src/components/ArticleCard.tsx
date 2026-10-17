@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { BookOpen, Compass, EyeOff, Heart, MoreHorizontal } from 'lucide-react';
+import { BookOpen, Compass, EyeOff, Heart, Layers3, MoreHorizontal, Radar } from 'lucide-react';
 import type { ArticleCard as Card } from '@readyou/shared';
 import { CategoryIllustration } from '../graphics/CategoryIllustration.tsx';
 import { EventMetaLine } from './EventDetails.tsx';
@@ -77,7 +77,18 @@ export function SummaryButton({ onOpen, status, size = 'md' }: { onOpen: () => v
   );
 }
 
-export function WhyBadge({ why }: { why: Card['why'] }) {
+export function WhyBadge({ why, trending }: { why: Card['why']; trending?: Card['trending'] }) {
+  if (trending) {
+    return trending.label === 'multi' ? (
+      <span className="inline-flex items-center gap-1 rounded-full bg-violet-soft px-2.5 py-1 text-xs font-semibold text-violet">
+        <Layers3 className="size-3.5" aria-hidden /> Niezależne źródła: {trending.independentSources}
+      </span>
+    ) : (
+      <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-800">
+        <Radar className="size-3.5" aria-hidden /> Na radarze
+      </span>
+    );
+  }
   if (!why) return null;
   return why.kind === 'explore' ? (
     <span className="inline-flex items-center gap-1 rounded-full bg-blue-soft px-2.5 py-1 text-xs font-semibold text-blue">
@@ -108,7 +119,7 @@ export function ArticleGridCard({
       </button>
       <div className="flex flex-1 flex-col gap-2 p-4">
         <div className="flex items-center gap-2">
-          <WhyBadge why={card.why} />
+          <WhyBadge why={card.why} trending={card.trending} />
         </div>
         <h3 className="font-display text-[17px] font-bold leading-snug">
           <button type="button" onClick={onOpenSummary} className="text-left hover:text-violet">

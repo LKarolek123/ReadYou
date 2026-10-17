@@ -84,6 +84,8 @@ Tematy (ścieżki aktywnych zainteresowań, wspólne dla wszystkich osób)
 
 **Wydarzenia** (`engine/events.ts`, `services/events.ts`): strony organizatorów per miasto (iCal → JSON-LD → strony szczegółów → AI z cytatami), wyszukiwarka (wyniki w pamięci), OSM dla klubów i miejsc. Wspólny katalog: `content_item` (kind event/club/place) + `event_details` / `place_details`, `event_source` (hash strony). Ranking per osoba w API z powiązań `content_topic`.
 
+**Trending** (`engine/trending.ts`): co godzinę 9 kanałów RSS → wektory → klastry historii (e5, średnia ≥ 0,89) → niezależne źródła (grupy wydawnicze, przedruki jako jedno) → migawka z dowodami (`trending_snapshot`/`trending_item`). Wydarzenia — osobny ranking z katalogu. Wspólne dla wszystkich; stany per osoba.
+
 **Limit 20**: `daily_assignment` ma klucz (użytkownik, dzień lokalny, slot 1..20) i unikalną parę (użytkownik, treść); wstawianie pod blokadą doradczą.
 
 ## Planowane w etapie 2 (silnik)
