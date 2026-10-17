@@ -54,6 +54,34 @@ Usunięcie konta kaskadowo usuwa profil, sesje, zainteresowania, ich wektory, on
 - Walidacja zod na wejściu, limit ciała żądania 64 KB, rate limiting, zapytania parametryzowane (Kysely).
 - Logi bez nagłówków `cookie`, `authorization` i `set-cookie`. Błędy konfiguracji wypisują nazwy zmiennych bez ich wartości.
 
+## Silnik treści (etap 2)
+
+```
+Tematy (ścieżki aktywnych zainteresowań, wspólne dla wszystkich osób)
+  ├─ ingest_feed  — kanały RSS przypisane do gałęzi taksonomii (co 2 h)
+  └─ search_topic — Brave News Search, ręcznie dobrane frazy (raz na dobę, twardy limit)
+        │  wyniki Brave tylko w pamięci zadania → wybór adresów
+        ▼
+  SafeFetcher (SSRF, robots.txt, limity) → ContentExtractor (JSON-LD/OG + Readability)
+        ▼
+  content_item (metadane od wydawcy) + content_text (pełny tekst z terminem usunięcia)
+  + content_embedding (e5) + content_topic (pochodzenie)
+        ▼
+  build_pool (per osoba, worker) — trafność + ranking + różnorodność → daily_assignment (≤ 20)
+        ▼
+  summarize_content (Haiku 5.5, budżet USD) → summary (cache: hash źródła + wersja promptu + model)
+        ▼
+  API: /feed/articles, /content/:id/summary, /me/content/:id/state, /me/articles, /interactions
+```
+
+**Trafność** (`engine/relevance.ts`): margines = podobieństwo do zainteresowania + bonus kanału tematycznego − max(podobieństwo do ogólnych działów newsowych, do przodków zainteresowania). Szczegółowe zainteresowania wymagają dowodu słownego lub kanału tematycznego. Bez dowodu treść jest „sąsiednia” — kandydat do puli odkrywania.
+
+**Ranking puli** (`engine/pool.ts`): 0,45 zainteresowanie, 0,20 tag, 0,15 świeżość, 0,10 jakość, 0,10 nowość; zachłanny dobór bez tej samej historii (kosinus ≥ 0,93), limit na zainteresowanie, ok. 20% odkrywania z progiem jakości.
+
+**Polubienie i przeczytanie** (`user_content_state`): dwa niezależne znaczniki czasu w jednym wierszu (użytkownik, treść). „Polubione” = `liked_at` i brak `read_at`; „Przeczytane” = `read_at` (niezależnie od polubienia). Żądania ustawiają stan (nie przełączają); interakcja do uczenia zapisuje się w tej samej transakcji tylko przy rzeczywistej zmianie. Pominięcie ukrywa tylko pozycję.
+
+**Limit 20**: `daily_assignment` ma klucz (użytkownik, dzień lokalny, slot 1..20) i unikalną parę (użytkownik, treść); wstawianie pod blokadą doradczą.
+
 ## Planowane w etapie 2 (silnik)
 
-`SearchProvider → ContentExtractor → SummaryProvider → EmbeddingProvider`, ranking, dzienna pula do 20 pozycji, stany polubienia i przeczytania (`UserContentState`). Worker i wektory zainteresowań już działają. Szczegóły i kandydaci do przeniesienia z Pulse & Go: `implementation-plan.md`.
+`SearchProvider → ContentExtractor → SummaryProvider → EmbeddingProvider`, uczenie z interakcji (promowanie wyuczonych tagów), wydarzenia, Trending, raport tygodniowy. Szczegóły i kandydaci do przeniesienia z Pulse & Go: `implementation-plan.md`.

@@ -1,0 +1,312 @@
+<title>Architektura AI ReadYou</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@600;700;800&family=Source+Sans+3:wght@400;600&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+  /* Układ: jedna kolumna czytelnicza (ok. 72ch) z szerszymi blokami diagramów; sekcje to kolejne etapy przepływu danych. */
+  :root {
+    --bg: #F8FAFC;
+    --surface: #FFFFFF;
+    --ink: #0F172A;
+    --muted: #5B6478;
+    --line: #E2E5EE;
+    --violet: #7C3AED;
+    --violet-soft: #EFE9FD;
+    --blue: #2563EB;
+    --blue-soft: #E6EEFD;
+    --amber: #B45309;
+    --amber-soft: #FDF3E3;
+    --green: #047857;
+    --green-soft: #E3F5EE;
+    --display: 'Plus Jakarta Sans', 'Segoe UI', system-ui, sans-serif;
+    --body: 'Source Sans 3', 'Segoe UI', system-ui, sans-serif;
+    --mono: 'JetBrains Mono', ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0D1020; --surface: #151A2E; --ink: #E8EAF3; --muted: #A2A9C0; --line: #262D47;
+      --violet: #A78BFA; --violet-soft: #241B45; --blue: #7AA2F7; --blue-soft: #18264A;
+      --amber: #F2B45C; --amber-soft: #33240F; --green: #4FD1A5; --green-soft: #0F2C24;
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0D1020; --surface: #151A2E; --ink: #E8EAF3; --muted: #A2A9C0; --line: #262D47;
+    --violet: #A78BFA; --violet-soft: #241B45; --blue: #7AA2F7; --blue-soft: #18264A;
+    --amber: #F2B45C; --amber-soft: #33240F; --green: #4FD1A5; --green-soft: #0F2C24;
+    color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  body {
+    background: var(--bg); color: var(--ink);
+    font: 17px/1.6 var(--body);
+    padding-inline: 16px; padding-block: 0 64px;
+  }
+  .wrap { max-width: 980px; margin: 0 auto; }
+  .prose { max-width: 72ch; }
+  header.top {
+    padding-block: 48px 28px; border-bottom: 1px solid var(--line);
+    display: grid; gap: 14px;
+  }
+  .brand { font: 700 14px/1 var(--display); color: var(--violet); letter-spacing: .08em; text-transform: uppercase; }
+  h1 { font: 800 clamp(30px, 5vw, 44px)/1.1 var(--display); margin: 0; text-wrap: balance; letter-spacing: -0.02em; }
+  h2 { font: 700 clamp(22px, 3vw, 27px)/1.2 var(--display); margin: 0; text-wrap: balance; letter-spacing: -0.01em; }
+  h3 { font: 700 17px/1.3 var(--display); margin: 0; }
+  p { margin: 0; }
+  .lead { color: var(--muted); font-size: 19px; max-width: 64ch; }
+  nav.toc { display: flex; flex-wrap: wrap; gap: 8px; padding-block: 20px; }
+  nav.toc a {
+    font: 600 14px/1 var(--body); color: var(--ink); text-decoration: none;
+    padding: 9px 12px; border: 1px solid var(--line); border-radius: 999px; background: var(--surface);
+  }
+  nav.toc a:hover, nav.toc a:focus-visible { border-color: var(--violet); color: var(--violet); outline: none; }
+  section { padding-block: 40px; border-bottom: 1px solid var(--line); display: grid; gap: 18px; scroll-margin-top: 12px; }
+  section:last-of-type { border-bottom: 0; }
+  .step { font: 600 13px/1 var(--mono); color: var(--blue); letter-spacing: .04em; }
+  .diagram {
+    background: var(--surface); border: 1px solid var(--line); border-radius: 14px;
+    padding: 20px; overflow-x: auto;
+  }
+  .diagram pre.mermaid { margin: 0; min-width: 640px; display: flex; justify-content: center; }
+  .facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 12px; }
+  .fact { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; display: grid; gap: 4px; min-width: 0; }
+  .fact b { font: 700 22px/1.2 var(--display); font-variant-numeric: tabular-nums; }
+  .fact span { color: var(--muted); font-size: 15px; }
+  .formula {
+    font: 400 15px/1.7 var(--mono); background: var(--violet-soft); color: var(--ink);
+    border-radius: 12px; padding: 14px 16px; overflow-x: auto; white-space: pre;
+  }
+  ul.points { margin: 0; padding-left: 1.2em; display: grid; gap: 6px; }
+  .table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); }
+  table { border-collapse: collapse; width: 100%; min-width: 620px; font-size: 15.5px; }
+  th, td { text-align: left; padding: 10px 14px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { font: 600 13px/1.3 var(--body); color: var(--muted); text-transform: uppercase; letter-spacing: .05em; }
+  tr:last-child td { border-bottom: 0; }
+  td.num { font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .tag { display: inline-block; font: 600 12.5px/1 var(--body); padding: 5px 8px; border-radius: 999px; white-space: nowrap; }
+  .t-ai { background: var(--violet-soft); color: var(--violet); }
+  .t-local { background: var(--green-soft); color: var(--green); }
+  .t-rule { background: var(--blue-soft); color: var(--blue); }
+  .t-ext { background: var(--amber-soft); color: var(--amber); }
+  code { font: 14.5px var(--mono); background: var(--blue-soft); padding: 1px 5px; border-radius: 5px; }
+  footer { color: var(--muted); font-size: 14.5px; padding-block: 24px 0; }
+  @media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; } }
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <div class="brand">ReadYou · dokumentacja techniczna</div>
+    <h1>Jak ReadYou dobiera i streszcza artykuły</h1>
+    <p class="lead">Architektura systemu AI: skąd biorą się artykuły, jak oceniamy ich trafność dla konkretnej osoby, jak powstaje dzienna pula do 20 pozycji i gdzie w tym wszystkim pracują modele językowe. Stan na 14 października 2026.</p>
+    <div class="facts" aria-label="Najważniejsze parametry">
+      <div class="fact"><b>≤ 20</b><span>nowych artykułów dziennie na osobę</span></div>
+      <div class="fact"><b>0 $</b><span>embeddingi — lokalny model e5 w workerze</span></div>
+      <div class="fact"><b>~0,0016 $</b><span>za jedno streszczenie (Claude Haiku 5.5)</span></div>
+      <div class="fact"><b>5 $ / mies.</b><span>twardy budżet usług zewnętrznych</span></div>
+    </div>
+  </header>
+
+  <nav class="toc" aria-label="Spis treści">
+    <a href="#system">Komponenty</a>
+    <a href="#odkrywanie">Odkrywanie treści</a>
+    <a href="#trafnosc">Trafność</a>
+    <a href="#pula">Dzienna pula</a>
+    <a href="#streszczenia">Streszczenia</a>
+    <a href="#stany">Polubione i przeczytane</a>
+    <a href="#ai">Gdzie pracuje AI</a>
+  </nav>
+
+  <section id="system">
+    <div class="step">CAŁOŚĆ</div>
+    <h2>Komponenty systemu</h2>
+    <p class="prose">Cztery procesy: aplikacja w przeglądarce, API, worker zadań w tle i baza danych. Wszystko, co kosztowne albo wolne (pobieranie stron, liczenie wektorów, wywołania modelu), dzieje się w workerze. API tylko czyta gotowe wyniki, więc kliknięcie w kartę nigdy nie wywołuje modelu.</p>
+    <div class="diagram">
+<pre class="mermaid">
+flowchart LR
+  subgraph U["Użytkownik"]
+    WEB["Aplikacja React<br/>Artykuły · Wydarzenia · Trending · Profil"]
+  end
+  subgraph S["Serwer ReadYou"]
+    API["API Fastify<br/>sesje, karty, stany, streszczenia"]
+    WRK["Worker<br/>kolejka zadań w PostgreSQL"]
+    E5["Lokalny model e5<br/>wektory 384-wymiarowe"]
+    DB[("PostgreSQL + pgvector<br/>katalog, wektory, pule, stany")]
+  end
+  subgraph X["Usługi zewnętrzne"]
+    RSS["Kanały RSS<br/>i strony wydawców"]
+    BRV["Brave Search API<br/>tylko adresy, bez zapisu"]
+    LLM["Claude Haiku 5.5<br/>streszczenia i tagi"]
+  end
+  WEB -- "HTTPS, ciasteczko sesji" --> API
+  API -- "odczyt i zapis" --> DB
+  API -- "zleca zadania" --> DB
+  WRK -- "pobiera zadania" --> DB
+  WRK --- E5
+  WRK -- "pobranie z robots.txt" --> RSS
+  WRK -- "zapytania tematów" --> BRV
+  WRK -- "tekst artykułu" --> LLM
+</pre>
+    </div>
+  </section>
+
+  <section id="odkrywanie">
+    <div class="step">ETAP 1</div>
+    <h2>Odkrywanie treści</h2>
+    <p class="prose">Szukamy według tematów, a nie według osób: temat to ścieżka zainteresowania, np. „Informatyka i technologia › Hackathony”, wspólna dla wszystkich, którzy ją wybrali. Dzięki temu jedno zapytanie służy wielu osobom, a profil konkretnego użytkownika nie trafia do wyszukiwarki.</p>
+    <div class="diagram">
+<pre class="mermaid">
+flowchart TD
+  T["Tematy aktywnych zainteresowań"] --> F["Kanały RSS przypisane do gałęzi<br/>co 2 godziny, 0 $"]
+  T --> Q["Zapytania Brave dla gałęzi bez dobrych kanałów<br/>raz na dobę, limit 30 dziennie"]
+  Q --> M["Wyniki tylko w pamięci zadania<br/>regulamin Brave zabrania zapisu"]
+  M --> P["Wstępna ocena z tytułu i opisu"]
+  F --> E["Wektor e5 z tytułu i leadu wydawcy"]
+  P --> G["Bezpieczne pobranie strony<br/>robots.txt · blokada SSRF · zastrzeżenia TDM"]
+  E --> R{"Bliżej tematu niż<br/>ogólnych newsów?"}
+  R -- "tak" --> G
+  R -- "nie" --> N["Zapamiętane jako nietrafne<br/>bez ponownej oceny"]
+  G --> X["Ekstrakcja: JSON-LD, Open Graph, tekst główny"]
+  X --> C[("Katalog: metadane od wydawcy,<br/>wektor, tekst z terminem usunięcia 14 dni")]
+</pre>
+    </div>
+    <ul class="points prose">
+      <li>Bot przedstawia się jako <code>ReadYouBot</code> z adresem kontaktowym i przestrzega robots.txt. Około 30–40% stron z wyszukiwarki odmawia dostępu i takie pozycje po prostu odpadają.</li>
+      <li>Do bazy trafia to, co pobraliśmy ze strony wydawcy, nigdy tytuły i opisy z wyników Brave.</li>
+    </ul>
+  </section>
+
+  <section id="trafnosc">
+    <div class="step">ETAP 2</div>
+    <h2>Ocena trafności dla konkretnej osoby</h2>
+    <p class="prose">Sam kosinus podobieństwa modelu e5 prawie nie odróżnia trafnych artykułów od nietrafnych (AUC 0,55–0,61). Dlatego porównujemy artykuł z „konkurencją”: ogólnymi działami newsowymi i ogólniejszymi tematami nad zainteresowaniem. Na oznaczonym zbiorze daje to AUC 0,98 i precyzję 0,95 przy progu 0.</p>
+    <div class="formula">margines = podobieństwo(artykuł, zainteresowanie) + bonus kanału tematycznego
+         − max( podobieństwo do działów newsowych: polityka, wypadki, sport, gospodarka…,
+                podobieństwo do przodków zainteresowania )</div>
+    <div class="diagram">
+<pre class="mermaid">
+flowchart TD
+  A["Artykuł z katalogu"] --> V["Margines dla każdego zainteresowania osoby"]
+  V --> D{"Margines ≥ 0?"}
+  D -- "nie" --> O["Odrzucony"]
+  D -- "tak" --> T{"Czy jest dowód dla tego zainteresowania?"}
+  T -- "tag AI z tej gałęzi" --> OK["Dopasowany<br/>trafia do ~80% puli"]
+  T -- "słowo-klucz w tekście" --> OK
+  T -- "kanał tematyczny, np. Chess.com" --> OK
+  T -- "tag AI z innej gałęzi, brak innych dowodów" --> SA["Sąsiedni<br/>kandydat do ~20% odkrywania"]
+  T -- "brak dowodu dla liścia" --> UP["Sprawdź ogólniejsze zainteresowanie"]
+  UP --> D
+</pre>
+    </div>
+    <ul class="points prose">
+      <li>Przykład: mecz Ligi Mistrzów wektorowo był najbliżej „Siatkówki”, ale model streszczeń otagował go jako piłkę nożną, więc trafił do „Piłki nożnej”.</li>
+      <li>Wynik trafności jest liczony w locie dla właściciela i nie trafia do wspólnych tabel.</li>
+    </ul>
+  </section>
+
+  <section id="pula">
+    <div class="step">ETAP 3</div>
+    <h2>Dzienna pula do 20 artykułów</h2>
+    <p class="prose">Worker buduje pulę rano (od 6:00 lokalnego czasu) albo przy pierwszym otwarciu dnia. Ocena to heurystyka startowa ze specyfikacji, nie wytrenowany model, więc każdy składnik da się wyjaśnić w „Dlaczego dla Ciebie”.</p>
+    <div class="diagram">
+<pre class="mermaid">
+flowchart LR
+  K["Kandydaci: dopasowani i sąsiedni<br/>bez przeczytanych, pominiętych i już pokazanych"] --> S["Ocena<br/>0,45 zainteresowanie · 0,20 tag<br/>0,15 świeżość · 0,10 jakość · 0,10 nowość"]
+  S --> R["Dobór różnorodny<br/>bez tej samej historii, limit na temat"]
+  R --> E["~80% dopasowanych + ~20% odkrywania<br/>odkrywanie tylko powyżej progu jakości"]
+  E --> L[("Przydział: slot 1–20 na dzień<br/>unikalny w bazie, pod blokadą")]
+  L --> Z["Zlecenie streszczeń"]
+</pre>
+    </div>
+    <ul class="points prose">
+      <li>Limit 20 egzekwuje baza danych: kilka kart przeglądarki ani równoległych odświeżeń go nie przekroczy (sprawdzone testem).</li>
+      <li>Przeczytanie ani pominięcie nie zwalnia miejsca. Gdy brakuje wiarygodnych treści, pula jest mniejsza i nie dopełniamy jej słabymi artykułami.</li>
+      <li>Kolejność wyświetlania przeplata tematy, żeby nie było kilku kart o Tesli z rzędu.</li>
+    </ul>
+  </section>
+
+  <section id="streszczenia">
+    <div class="step">ETAP 4</div>
+    <h2>Streszczenia przez Claude Haiku 5.5</h2>
+    <p class="prose">Każdy artykuł streszczamy raz, dla wszystkich odbiorców, zanim karta trafi do puli. Tekst strony jest dla modelu niezaufanym dokumentem: instrukcje zapisane w artykule są ignorowane, a odpowiedź musi pasować do schematu JSON i przechodzi naszą walidację.</p>
+    <div class="diagram">
+<pre class="mermaid">
+sequenceDiagram
+  autonumber
+  participant W as Worker
+  participant B as Budżet LLM
+  participant H as Claude Haiku 5.5
+  participant D as Baza
+  participant A as API i przeglądarka
+  W->>D: Czy jest streszczenie dla tego tekstu i wersji promptu?
+  D-->>W: Brak w cache
+  W->>B: Zarezerwuj szacowany koszt
+  B-->>W: Zgoda (limit 0,16 $ dziennie)
+  W->>H: Tytuł, źródło, data + tekst jako dokument
+  H-->>W: JSON: opis karty, streszczenie, fakty, zastrzeżenia, tagi
+  W->>W: Walidacja: długość, znane tagi, bez uwag o reklamach
+  W->>B: Rozlicz rzeczywiste tokeny
+  W->>D: Zapisz streszczenie
+  A->>D: Użytkownik otwiera „książkę”
+  D-->>A: Gotowe streszczenie, bez wywołania modelu
+</pre>
+    </div>
+    <ul class="points prose">
+      <li>Gdy źródło daje tylko fragment (paywall, krótki lead), streszczenie jest krótsze i oznaczone „Na podstawie dostępnego fragmentu”. Gdy materiału jest za mało, nie powstaje wcale.</li>
+      <li>Opinie autora, zapowiedzi i niepotwierdzone informacje trafiają do osobnej sekcji „Do zważenia”.</li>
+      <li>Przy błędzie konta (np. brak środków) zadania czekają 6 godzin zamiast powtarzać wywołania.</li>
+    </ul>
+  </section>
+
+  <section id="stany">
+    <div class="step">STAN UŻYTKOWNIKA</div>
+    <h2>Polubione i przeczytane</h2>
+    <p class="prose">To dwa niezależne znaczniki czasu w jednym wierszu (osoba, artykuł). „Polubione” pokazuje polubione i jeszcze nieprzeczytane, „Przeczytane” pokazuje wszystkie przeczytane, polubione lub nie. Samo otwarcie streszczenia ani kliknięcie źródła niczego nie zmienia.</p>
+    <div class="diagram">
+<pre class="mermaid">
+stateDiagram-v2
+  direction LR
+  state "Nowy" as N
+  state "Polubiony" as L
+  state "Przeczytany" as R
+  state "Polubiony i przeczytany" as LR
+  [*] --> N
+  N --> L: serce
+  L --> N: serce ponownie
+  N --> R: Oznacz jako przeczytane
+  R --> N: Oznacz jako nieprzeczytane
+  L --> LR: Oznacz jako przeczytane
+  LR --> L: Oznacz jako nieprzeczytane
+  R --> LR: serce
+  LR --> R: serce ponownie
+  note right of L: lista „Polubione”
+  note right of R: lista „Przeczytane”
+  note right of LR: lista „Przeczytane”, serce zostaje
+</pre>
+    </div>
+    <ul class="points prose">
+      <li>Żądanie ustawia stan zamiast go przełączać, więc ponowne wysłanie niczego nie psuje. Sygnał do uczenia zapisuje się tylko przy rzeczywistej zmianie.</li>
+      <li>Pominięcie (swipe w lewo) ukrywa jeden artykuł i nie obniża oceny tematu. Można je cofnąć.</li>
+    </ul>
+  </section>
+
+  <section id="ai">
+    <div class="step">PODSUMOWANIE</div>
+    <h2>Gdzie pracuje AI, a gdzie zwykłe reguły</h2>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Krok</th><th>Mechanizm</th><th>Co opuszcza serwer</th><th>Koszt</th></tr></thead>
+        <tbody>
+          <tr><td>Wektory zainteresowań i artykułów</td><td><span class="tag t-local">lokalny model e5</span></td><td>nic</td><td class="num">0 $</td></tr>
+          <tr><td>Wyszukiwanie artykułów</td><td><span class="tag t-ext">Brave Search API</span></td><td>frazy tematów, bez danych osoby</td><td class="num">~0,005 $ / zapytanie</td></tr>
+          <tr><td>Ocena trafności i przypisanie</td><td><span class="tag t-rule">reguły + wektory + tagi AI</span></td><td>nic</td><td class="num">0 $</td></tr>
+          <tr><td>Dzienna pula i ranking</td><td><span class="tag t-rule">heurystyka z wagami</span></td><td>nic</td><td class="num">0 $</td></tr>
+          <tr><td>Streszczenia, opisy kart i tagi</td><td><span class="tag t-ai">Claude Haiku 5.5</span></td><td>tekst artykułu wydawcy, bez danych osoby</td><td class="num">~0,0016 $ / artykuł</td></tr>
+          <tr><td>„Dlaczego dla Ciebie”</td><td><span class="tag t-rule">z oceny trafności</span></td><td>nic</td><td class="num">0 $</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="prose">Do modelu i wyszukiwarki nigdy nie trafiają e-mail, identyfikator konta ani profil. Zewnętrzne usługi widzą tylko tematy i treść publicznych artykułów.</p>
+  </section>
+
+  <footer>ReadYou · stan systemu na 14.10.2026 · szczegóły decyzji: <code>docs/implementation-plan.md</code>, przepływ danych: <code>docs/architecture.md</code></footer>
+</div>

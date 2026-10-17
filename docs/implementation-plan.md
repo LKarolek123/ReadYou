@@ -84,11 +84,61 @@ Stan na 12.10.2026. Etap 1: konto, onboarding, profil, grafiki. Silnik treści (
 - Adaptery dostawców są w `packages/providers`. `E5EmbeddingProvider` używa transformers.js (`@huggingface/transformers` 4.x, ONNX) i repozytorium `Xenova/multilingual-e5-small`, czyli portu ONNX tych samych wag co `intfloat/multilingual-e5-small` w Pulse & Go. Domyślnie wersja skwantyzowana q8.
 - Prefiksy e5 jak w Pulse & Go: `query: ` dla zainteresowań, `passage: ` dla treści.
 - `FakeEmbeddingProvider` (haszowanie słów) służy wyłącznie do testów.
-- Obserwacja do decyzji przy rankingu: podobieństwa e5 mieszczą się w wąskim przedziale (~0,75–0,88). Niezwiązany nagłówek („zmiany w VAT”) dostaje ~0,82, a trafny ~0,85–0,88. Surowy kosinus wymaga kalibracji, np. przeskalowania względem tła lub progu, zanim trafi do składnika 0,45.
+- **Kalibracja progu (12.10.2026).** Próbka: 320 nagłówków i leadów z 24 publicznych kanałów RSS (RMF24, WP, TVN24, Polsat News, Onet, money.pl, Bankier, BBC, Antyweb, Chip, Spider's Web, The Verge, Hugging Face, Simon Willison, MarkTechPost, ChessBase, Chess.com, Electrek, Teslarati, wspinanie.pl, ExplorersWeb, Alpinist, Przegląd Sportowy, Onet Kultura). Pozycje oceniono ręcznie względem 9 zainteresowań konta deweloperskiego: 102 wyraźnie trafne, 59 pokrewnych, 159 nietrafnych. Wyniki (AUC: 0,5 = losowo, 1 = idealnie):
+
+  | Metoda | AUC trafne vs nietrafne | Wniosek |
+  | --- | --- | --- |
+  | A: surowy max kosinusa | 0,55 | Bezużyteczny jako próg; mediana nietrafnych 0,788, trafnych 0,793 |
+  | B: max − średnia po zainteresowaniach | 0,80 | Lepszy, ale słaby |
+  | Opisy zainteresowań zamiast ścieżek | ≈ jak bez nich | Nie warto generować opisów tylko dla progu |
+  | F: max − max konkurenta (inne kategorie taksonomii + działy newsowe) | 0,91 | Dobry |
+  | **F2: max − max działu newsowego** | **0,93** | **Wybrany** |
+
+- Wybrana miara trafności: `podobieństwo do najlepszego zainteresowania − podobieństwo do najbliższego ogólnego działu newsowego` (polityka, wojna, wypadki, przestępczość, gospodarka, pogoda, religia, celebryci, transport, zdrowie, edukacja, administracja itd.). Działy to stała lista wektorów (prototypów), liczona raz.
+- Próg: **margines ≥ 0**, czyli artykuł jest bliżej Twoich tematów niż ogólnych newsów. Walidacja krzyżowa (próg z połowy danych, test na drugiej) dała próg −0,003 i 0,000 oraz precyzję 0,79–0,86 przy czułości ~0,77. Surowy próg w tej samej walidacji nie wybrał prawie nic.
+- Model bezbłędnie wybiera właściwą gałąź (46/46 dla szachów, Tesli i Alp). Problemem jest tylko rozstrzygnięcie „czy w ogóle trafne”.
+- Ograniczenia: jeden profil, ręczne etykiety jednej osoby, tylko nagłówki i leady z RSS (bez pełnego tekstu). Najsłabiej wypadają angielskie nagłówki bez słowa-klucza (np. „Nakamura Breaks Calendar Record” — szachy). Pomoże pełny tekst po ekstrakcji i sygnał źródła (Chess.com to serwis szachowy). Próg należy ponownie sprawdzić na wynikach z Brave.
+- **Weryfikacja na Brave (12.10.2026).** 20 zapytań News Search (`freshness=pw`, PL i EN, ~0,10 $ z kredytu) dało 342 wyniki, z czego 314 unikalnych: 210 wyraźnie trafnych, 42 pokrewne, 62 nietrafne. Nietrafne były tu trudniejsze: „Alpy” → Aleph Alpha i notowania giełdowe, „hackathon Kraków” → półmaraton i wybory, „szachy arcymistrz” → turniej ATP.
+
+  | Tekst artykułu | Surowy kosinus AUC | F2 AUC | F2, próg 0 |
+  | --- | --- | --- | --- |
+  | tytuł | 0,57 | 0,88 | precyzja 0,88, czułość 0,92 |
+  | **tytuł + opis** | 0,61 | **0,94** | **precyzja 0,93, czułość 0,95** |
+  | tytuł + opis + `extra_snippets` | 0,59 | 0,92 | precyzja 0,89, czułość 0,96 |
+
+  - Próg 0 się potwierdził. Do oceny używamy tytułu i opisu; `extra_snippets` nie pomagają (dodają szum).
+  - Do działów newsowych dodano „Sport: piłka nożna, tenis, siatkówka, wyniki meczów”: Brave AUC 0,944 → 0,948, RSS 0,928 → 0,934. Działy pokrywające się z zainteresowaniem użytkownika (np. ktoś wybrał Sport) trzeba dla niego wyłączyć z listy konkurentów.
+  - Jakość zapytań: konkretne angielskie zapytania (np. „AI agents”, „chess tournament grandmaster”, „hackathon 2026 registration”) dają 15–20 trafnych wyników na 20. Ogólne polskie („nowe technologie”, „programowanie”, „szachy online”) dają 1–2. Planer zapytań ma używać ścieżki i konkretnych fraz, a nie samej etykiety.
+  - Limit konta: nagłówek `x-ratelimit-limit: 50` (na sekundę). Klucz jest w `.env` jako `BRAVE_SEARCH_SECRET_KEY`.
+  - **Regulamin Brave (sprawdzony 12.10.2026)** zabrania przechowywania wyników poza przechowywaniem tymczasowym (§3(b)(i)) oraz używania ich do oceny, testowania i trenowania modeli AI (§3(b)(xiii)). Powyższa jednorazowa ocena była z tym sprzeczna. Surowe wyniki Brave zostały usunięte, zostały tylko zagregowane wnioski. Konsekwencje dla silnika:
+    - wyniki Brave żyją wyłącznie w pamięci zadania odkrywania i służą do wyboru adresów do pobrania;
+    - w bazie zapisujemy treść i metadane pobrane **ze strony wydawcy** (Open Graph, JSON-LD, tekst), a nie tytuły i opisy z Brave;
+    - kalibracja i testy trafności korzystają wyłącznie z RSS i z naszych ekstrakcji stron, nigdy z wyników Brave.
+
+## Etap 2, kroki 2–4: odkrywanie, streszczenia, pula (12–13.10.2026)
+
+Decyzje podjęte samodzielnie (właściciel zostawił pracę na noc):
+
+- **Źródła.** RSS jako podstawa (0 $), Brave dla gałęzi bez dobrych kanałów (hackathony, RAG, agenci AI, Alpy). Zapytania to ręcznie dobrane frazy per węzeł (`engine/sources.ts`); węzły główne nie mają zapytań.
+- **Regulamin Brave.** Wyniki tylko w pamięci zadania; zapisujemy metadane i tekst ze strony wydawcy. Test sprawdza, że nic z wyników wyszukiwarki nie trafia do bazy.
+- **Uczciwy bot.** User-Agent `ReadYouBot/0.1 (+kontakt)`, robots.txt, zastrzeżenia TDM, odstęp 1,5 s na domenę. Ok. 30–40% stron z wyszukiwarki odmawia (HTTP 403) — nie obchodzimy tego; takie pozycje odpadają.
+- **Trafność po pierwszym przebiegu.** Na 445 prawdziwych pozycjach liść „Hackathony” przyciągał ogólne newsy technologiczne (49 pozycji, prawie żadna o hackathonach). Dodane: konkurencja z przodkami, bonus kanału tematycznego (+0,02) i dowody słowne dla liści. Na oznaczonym zbiorze RSS: AUC 0,934 → 0,981, precyzja przy progu 0: 0,88 → 0,95, poprawne przypisanie 66 → 81/103. Porównanie z rodzeństwem w taksonomii odrzucone (czułość 0,68 → 0,55 bez zysku precyzji). Uwaga: listy dowodów układano, patrząc na ten sam zbiór — wynik jest optymistyczny; walidacja na ocenach właściciela (`engine export/eval`).
+- **Streszczenia.** Haiku 5.5, `effort: medium` (13.10: przy `low` karta Tesli zawierała błąd „zanim ruszy produkcja” i ogólny tag; przy `medium` dwie próby wierne źródłu i tag `auto.ev.tesla`; koszt ~0,0016 $ zamiast ~0,0012 $ za streszczenie), prompt `pl-summary-v2` (twardy limit 150 słów, najbardziej szczegółowe tagi; v1 dawał 170–190 słów), structured outputs (zod) + walidacja po naszej stronie, tekst źródła jako niezaufany `<dokument>`, maks. 14 000 znaków (dłuższy = „fragment”). Model zwraca też tagi z taksonomii (do lepszego przypisania i ilustracji). Batch API świadomie nie teraz: ~30 streszczeń/dzień kosztuje grosze, a wsad może trwać do 24 h.
+- **Budżet LLM.** Rezerwacja szacowanego kosztu przed wywołaniem (blokada doradcza), rozliczenie rzeczywistych tokenów po nim; błąd zwalnia rezerwację. Brak środków na koncie API → ponowienie za 6 h zamiast zalewu błędów.
+- **Pula.** Budowana w workerze (model e5 nie w procesie API). Pierwsze otwarcie dnia zleca zadanie; front odpytuje co 3 s. Od 6:00 lokalnie worker przygotowuje pulę sam. Odświeżenie uzupełnia tylko wolne sloty (odstęp 15 min, limit 6 żądań/h). Limit na zainteresowanie = max(3, ⌈1,5 × 20 / liczba zainteresowań z kandydatami⌉).
+- **Odkrywanie (~20%).** Tylko pozycje z marginesem bez dowodu ≥ 0,015 i oceną ≥ 0,45. Pierwsza pula miała 4 słabe pozycje (WhatsApp, fotokatalizator) z mylącym uzasadnieniem „Hackathony” — po zmianie ich nie ma; uzasadnienie wskazuje kategorię główną, nie liść.
+- **Obrazy.** Domyślnie ilustracje kategorii (`SHOW_SOURCE_IMAGES=false`): `og:image` to metadane, nie licencja.
+- **Odporność.** Odmowa wydawcy (HTTP 4xx) kończy ekstrakcję bez ponowień; błędy sieci są ponawiane, a harmonogram co godzinę wznawia pozycje, które utknęły (np. po uśpieniu laptopa).
+
+## Przegląd 14.10.2026: interfejs, streszczenia, przypisanie
+
+- **Interfejs** sprawdzony w Chrome (Playwright, systemowa przeglądarka): 390 px, 360 px i 1280 px; logowanie, pula, Grid, Swipe (klawiatura ←), pominięcie i „Cofnij”, panel streszczenia, polubienie, przeczytanie, Twoje artykuły (obie listy), Profil. Bez poziomego przewijania. Poprawione: ucięte źródło/data na kartach siatki (osobna linia), kolejność wyświetlania przeplata tematy (round-robin), żeby nie było trzech kart o Tesli z rzędu.
+- **Streszczenia** (84 × v2): średnio 122 słowa (maks. 158), 1 słusznie odrzucone (strona z 10 słowami). Ręczna weryfikacja faktów na próbce (Chess.com, SnowBrains, Electrek, DEV): liczby, nazwiska i przyczyny zgodne ze źródłem, opinie oddzielone. Częsty szum: zastrzeżenia o reklamach w źródle (EnergySage, FRITZ) — filtrowane przy odczycie, a prompt v3 każe je pomijać.
+- **Tagi AI jako dowód przypisania.** e5 mylił dyscypliny (Liga Mistrzów → „Siatkówka”). Tagi ze streszczenia: tag w poddrzewie potwierdza zainteresowanie; tag w innej gałęzi wyklucza je, chyba że jest niezależny dowód (słowo-klucz, kanał tematyczny — model bywa omylny: symultana Polgar dostała tag `sport.volleyball`); tag ogólniejszy nie rozstrzyga. Własne zainteresowania (spoza taksonomii) przy obecnych tagach wymagają wzmianki nazwy w tekście (wcześniej „giełda” przejmowała artykuł o RAG). Na 98 streszczonych pozycjach w pulach: 12 zmian przypisania, z czego ręcznie oceniłem jako poprawne 10, wątpliwe 2 (kwanty → „Sztuczna inteligencja”, startupy → „rynki finansowe”). Zapisane uzasadnienia w pulach przeliczono.
 
 ## Poza etapem 1 (świadomie niezrobione)
 
-- Silnik treści: wyszukiwanie, ekstrakcja, streszczenia, embeddingi, ranking, limit 20 dziennie, polubienia i przeczytane, Trending, wydarzenia.
+- Silnik treści — zrobione w etapie 2: wyszukiwanie, ekstrakcja, streszczenia, embeddingi, ranking, limit 20, polubienia i przeczytane. Do zrobienia: uczenie z interakcji, Trending, wydarzenia.
 - Wysyłka raportów, publiczny endpoint wypisu.
 - Zakładki Artykuły, Wydarzenia i Trending pokazują uczciwe puste stany, bez fikcyjnych kart.
 - Moduł płatności nie istnieje i nie powstanie.

@@ -28,10 +28,24 @@ Worker (`npm run worker`, w `npm run dev` startuje automatycznie) wykonuje zadan
 
 W trybie dev wiadomości nigdy nie trafiają do realnych skrzynek. Adapter `smtp-dev` odmawia wysyłki na host inny niż lokalny.
 
+## Silnik treści (narzędzia deweloperskie)
+
+```bash
+npm run engine -- run [--search]        # odkrywanie teraz: kanały RSS (+ Brave, w ramach limitu)
+npm run engine -- inspect <email> [--all]  # ranking trafności konta z uzasadnieniem (✔ dopasowane, ~ odkrywanie)
+npm run engine -- pool <email> [--force]   # zbuduj/uzupełnij dzisiejszą pulę (maks. 20) i pokaż składniki oceny
+npm run engine -- summarize <id…>          # streszczenie wskazanych treści (Haiku 5.5, z limitem kosztu)
+npm run engine -- export <email>           # CSV do ręcznej oceny trafności (.cache/relevance/)
+npm run engine -- eval <plik.csv>          # AUC i precyzja/czułość dla progów na Twoich ocenach
+npm run engine -- usage                    # zużycie Brave i LLM (dziś / miesiąc) wobec limitów
+```
+
+Worker sam: co 10 min planuje odkrywanie (kanały co 2 h, wyszukiwarka raz na dobę na temat), od 6:00 czasu lokalnego buduje dzienną pulę, a dla wybranych artykułów zleca streszczenia.
+
 ## Testy
 
 ```bash
-npm test             # vitest: DFS, harmonogram, izolacja kont, kolejka zadań, wektory (wymaga db:up + db:migrate)
+npm test             # vitest: DFS, harmonogram, izolacja kont, kolejka, wektory, trafność, pula, stany, streszczenia (wymaga db:up + db:migrate)
 npm run typecheck
 npm run build
 ```
@@ -41,9 +55,9 @@ npm run build
 ```
 apps/web         React 19 + Vite + Tailwind 4 (UI, grafiki SVG w src/graphics)
 apps/api         Fastify 5 + Better Auth + Kysely; src/worker.ts — worker kolejki zadań
-packages/providers  adaptery dostawców (EmbeddingProvider: lokalny e5)
+packages/providers  adaptery: embeddingi e5, Brave, bezpieczne pobieranie (SSRF, robots.txt), RSS, ekstrakcja stron, streszczenia Claude
 packages/shared  taksonomia, maszyna stanów DFS, schematy profilu, harmonogram raportu
-db/migrations    SQL (0001 Better Auth, 0002 profil/onboarding/zainteresowania/raport, 0003 kolejka zadań i wektory)
+db/migrations    SQL (0001 Better Auth, 0002 profil/onboarding/zainteresowania/raport, 0003 kolejka i wektory, 0004 katalog treści, 0005 streszczenia, 0006 pula i stany)
 docs             plan, architektura, walidacja
 ```
 
@@ -57,7 +71,13 @@ docs             plan, architektura, walidacja
 | `EMBEDDING_PROVIDER` | `e5-local` (lokalny multilingual-e5-small, 0 $) lub `disabled` | Domyślnie `e5-local`; `disabled` — brak wektorów |
 | `EMBEDDING_CACHE_DIR` | Katalog cache modelu | `.cache/models` |
 
-Wybrani dostawcy silnika (Brave Search, Claude Haiku 5.5) i limity budżetu: `docs/implementation-plan.md`. Ich klucze dojdą w kolejnych krokach.
+| `BRAVE_SEARCH_SECRET_KEY` | Wyszukiwanie artykułów dla tematów bez dobrych kanałów RSS | Tylko kanały RSS |
+| `ANTHROPIC_API_KEY` | Streszczenia po polsku (Claude Haiku 5.5) | Karty bez streszczeń („w przygotowaniu”) |
+| `SHOW_SOURCE_IMAGES` | Obrazy wydawców na kartach | Ilustracje kategorii ReadYou |
+
+Limity kosztów i pozostałe ustawienia silnika: `.env.example`. Decyzje i kalibracja: `docs/implementation-plan.md`.
+
+Testy korzystają z tej samej lokalnej bazy co `npm run dev`; uruchamiaj je przy zatrzymanym workerze albo licz się z rzadkimi kolizjami zadań (testy czyszczą swoje zlecenia).
 
 ## Pulse & Go
 

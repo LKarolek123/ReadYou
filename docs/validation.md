@@ -2,7 +2,7 @@
 
 Data: 12.10.2026. Środowisko: Windows 11, Node 22.14, Docker 29.8.
 
-## Testy automatyczne — `npm test` (38/38 ✔)
+## Testy automatyczne — `npm test` (99/99 ✔, 18.10.2026)
 
 | Plik | Zakres |
 | --- | --- |
@@ -10,6 +10,11 @@ Data: 12.10.2026. Środowisko: Windows 11, Node 22.14, Docker 29.8.
 | `packages/shared/test/schedule.test.ts` | Piątek 20:00 Europe/Warsaw: CEST → 18:00 UTC, CET → 19:00 UTC, zmiana wiosenna i jesienna, granica 20:00, inna strefa; normalizacja tagów |
 | `apps/api/test/account.test.ts` | Izolacja kont (A nie widzi i nie zmienia tagów B, eksport tylko własny), 401 bez sesji, CSRF 403, wykluczenie kontra reset wyuczonych, 422 dla wieloznacznych, budżet `null` ≠ `0`, raport wymaga weryfikacji, zapis DFS do tagów bez nadpisywania ręcznych |
 | `apps/api/test/engine-jobs.test.ts` | Kolejka: deduplikacja równoległych zleceń, brak podwójnego pobrania przez kilku workerów, brak równoległych zadań o tym samym kluczu, ponowienia z opóźnieniem, maskowanie sekretów w błędach, Retry-After bez zużycia próby, przejęcie po wygaśnięciu dzierżawy. Wektory (atrapa): zlecenie po zmianie tagów, osobny wektor na zainteresowanie, idempotencja, usuwanie przy wykluczeniu i usunięciu, przeliczenie po zmianie modelu, izolacja kont, usunięcie konta |
+| `packages/providers/test/providers.test.ts` | Kanonizacja URL (parametry śledzące), SSRF (IP prywatne, IPv6, metadane chmur, porty, localhost, DNS na adres prywatny), RSS/Atom (CDATA, encje), ekstrakcja (JSON-LD, OG, obcy canonical, TDM, fragment), instrukcje w tekście strony jako dane |
+| `apps/api/test/engine-relevance.test.ts` | Działy newsowe, bramka dowodów dla liści, powrót do rodzica, konkurencja z przodkiem, bonus kanału, działy pokrywające się z zainteresowaniem; twardy limit zapytań przy 20 równoległych rezerwacjach |
+| `apps/api/test/engine-discovery.test.ts` | Wyszukiwanie na atrapach: zapis metadanych ze strony wydawcy (nic z wyszukiwarki w bazie), brak duplikatów, robots odrzuca stronę, wyczerpany limit zatrzymuje zapytania |
+| `apps/api/test/engine-summaries.test.ts` | Atrapa dostawcy: cache bez ponownego wywołania, nowe streszczenie po zmianie źródła, budżet blokuje wywołanie, błąd zwalnia rezerwację, walidacja (nieznane tagi, długość, brak materiału) |
+| `apps/api/test/feed.test.ts` | Pula: 5 równoległych budowań = dokładnie 20 różnych pozycji, odświeżenie nie dodaje ponad limit, przeczytane znikają z „Dla Ciebie” bez zwalniania slotu; Polubione/Przeczytane (wszystkie przejścia stanów), idempotencja polubienia, otwarcie streszczenia/źródła ≠ przeczytanie, pominięcie i cofnięcie bez wykluczania tematu, stronicowanie kursorowe, zmiana dnia, izolacja kont i eksportu, walidacja wejścia (w tym odrzucenie `userId` od klienta) |
 
 Testy API wymagają działającej bazy (`npm run db:up && npm run db:migrate`). Tymczasowe konta są usuwane po teście.
 
@@ -42,4 +47,8 @@ Znalezione i naprawione podczas sprawdzania:
 - **Produkcyjny dostawca e-mail**: nieskonfigurowany. Wiadomości trafiają wyłącznie do lokalnego Mailpit.
 - **Reset hasła**: przetestowane tylko wysłanie wiadomości do Mailpit (`requestPasswordReset`), bez pełnego przejścia w przeglądarce.
 - **Lokalny model e5 (12.10.2026)**: sprawdzony ręcznie, nie w `npm test`. Pierwsze pobranie zajęło ~35 s. Worker przeliczył 9 wektorów konta deweloperskiego w ~2,2 s (`vector_dims = 384`). Nagłówki demonstracyjne trafiły w odpowiednie gałęzie (szachy → „Szachy”, lawiny w Alpach → „Alpy”, Tesla → „Tesla (samochody)”, hackathon → „Hackathony”). Różnice podobieństwa są jednak małe — patrz obserwacja w `implementation-plan.md`.
-- Silnik treści (wyszukiwanie, streszczenia, ranking) i raporty: kolejne kroki etapu 2.
+- **Odkrywanie na prawdziwych danych (12.10.2026)**: 10 kanałów RSS + 14 zapytań Brave dla 7 tematów konta deweloperskiego → 445 pozycji w katalogu; pula 20 pozycji: Tesla 4, Agenci AI 4, Gry i szachy 4, RAG 3, Sztuczna inteligencja 2, Alpy 1, Hackathony 1 (HackYeah 2026), Informatyka 1. Ocena trafności ręczna, jednej osoby.
+- **Streszczenia na prawdziwym modelu (13.10.2026, po doładowaniu konta)**: Haiku 5.5, artykuł polski (fragment) i angielski (pełny tekst). Fakty oddzielone od opinii, fragment oznaczony, reklama wtrącona w tekst pominięta. Prompt v2: 123 i 126 słów. `effort: low` → błąd merytoryczny na karcie; `effort: medium` → poprawne karty i tagi w 2/2 próbach. Ocena jakości ręczna, na kilku artykułach.
+- **Interfejs Artykułów (Grid/Swipe, panel streszczenia, Twoje artykuły)**: obejrzany 14.10.2026 w Chrome (Playwright) przy 390 px, 360 px i 1280 px — szczegóły w `implementation-plan.md`, sekcja „Przegląd 14.10.2026”. Nie sprawdzono gestów dotykowych na fizycznym telefonie ani safe area na urządzeniu z wycięciem.
+- **Noc 12/13.10**: laptop bez sieci od ~23:54 — zadania kanałów i ekstrakcji wyczerpały próby. Dodano wznawianie zaległych ekstrakcji i ostateczność błędów 4xx.
+- Raport tygodniowy, wydarzenia, Trending i uczenie z interakcji: kolejne kroki.

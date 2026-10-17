@@ -5,6 +5,8 @@ import { env } from './env.ts';
 
 // NUMERIC i BIGINT jako liczby JS (wartości w tym projekcie są małe).
 pg.types.setTypeParser(1700, (v) => Number(v));
+// DATE jako napis „RRRR-MM-DD” — lokalny dzień użytkownika nie może się przesunąć przez strefę serwera.
+pg.types.setTypeParser(1082, (v) => v);
 
 export const pool = new pg.Pool({ connectionString: env.DATABASE_URL, max: 10 });
 
@@ -119,6 +121,134 @@ interface UserInterestEmbeddingTable {
   created_at: Timestamp;
 }
 
+interface TopicTable {
+  key: string;
+  label: string;
+  path: string[];
+  node_key: string | null;
+  model: string | null;
+  embedding: string | null;
+  last_feeds_at: NullableTimestamp;
+  last_search_at: NullableTimestamp;
+  created_at: Timestamp;
+}
+
+export type ContentStatus = 'discovered' | 'extracted' | 'partial' | 'blocked' | 'failed' | 'irrelevant';
+
+interface ContentItemTable {
+  id: Generated<string>;
+  kind: Generated<'article' | 'news' | 'event' | 'club' | 'place'>;
+  canonical_url: string;
+  url: string;
+  source_domain: string;
+  source_name: string | null;
+  title: string;
+  description: string | null;
+  language: string | null;
+  published_at: NullableTimestamp;
+  author: string | null;
+  image_url: string | null;
+  discovered_via: 'feed' | 'search';
+  feed_url: string | null;
+  status: Generated<ContentStatus>;
+  status_note: string | null;
+  word_count: number | null;
+  content_hash: string | null;
+  fetched_at: NullableTimestamp;
+  created_at: Timestamp;
+  updated_at: Timestamp;
+}
+
+interface ContentTextTable {
+  content_id: string;
+  text: string;
+  expires_at: Timestamp;
+}
+
+interface ContentEmbeddingTable {
+  content_id: string;
+  model: string;
+  dim: number;
+  source_hash: string;
+  embedding: string;
+  created_at: Timestamp;
+}
+
+interface ContentTopicTable {
+  content_id: string;
+  topic_key: string;
+  via: 'feed' | 'search';
+  relevance: number | null;
+  discovered_at: Timestamp;
+}
+
+interface ProviderUsageTable {
+  day: string;
+  provider: string;
+  calls: Generated<number>;
+}
+
+interface SummaryTable {
+  id: Generated<string>;
+  content_id: string;
+  source_hash: string;
+  prompt_version: string;
+  model: string;
+  language: Generated<string>;
+  sufficient: boolean;
+  card_description: string | null;
+  summary: string | null;
+  key_facts: JSONColumnType<string[], string, string>;
+  caveats: JSONColumnType<string[], string, string>;
+  tags: Generated<string[]>;
+  basis: 'full' | 'excerpt';
+  input_tokens: Generated<number>;
+  output_tokens: Generated<number>;
+  created_at: Timestamp;
+}
+
+interface UserContentStateTable {
+  user_id: string;
+  content_id: string;
+  liked_at: NullableTimestamp;
+  read_at: NullableTimestamp;
+  skipped_at: NullableTimestamp;
+  updated_at: Timestamp;
+}
+
+export type InteractionType =
+  | 'exposure'
+  | 'like'
+  | 'unlike'
+  | 'summary_open'
+  | 'source_click'
+  | 'skip'
+  | 'unskip'
+  | 'read'
+  | 'unread'
+  | 'less_topic';
+
+interface InteractionTable {
+  id: Generated<string>;
+  user_id: string;
+  content_id: string | null;
+  type: InteractionType;
+  idempotency_key: string | null;
+  created_at: Timestamp;
+}
+
+interface DailyAssignmentTable {
+  user_id: string;
+  local_day: string;
+  slot: number;
+  content_id: string;
+  kind: 'matched' | 'explore';
+  score: number;
+  reason: JSONColumnType<{ interest: string | null; nodeKey?: string | null; margin: number; parts: Record<string, number> }, string, string>;
+  profile_version: number;
+  created_at: Timestamp;
+}
+
 export interface Database {
   user: AuthUserTable;
   account: AuthAccountTable;
@@ -129,7 +259,20 @@ export interface Database {
   report_subscription: ReportSubscriptionTable;
   job: JobTable;
   user_interest_embedding: UserInterestEmbeddingTable;
+  topic: TopicTable;
+  content_item: ContentItemTable;
+  content_text: ContentTextTable;
+  content_embedding: ContentEmbeddingTable;
+  content_topic: ContentTopicTable;
+  provider_usage: ProviderUsageTable;
+  summary: SummaryTable;
+  user_content_state: UserContentStateTable;
+  interaction: InteractionTable;
+  daily_assignment: DailyAssignmentTable;
 }
+
+/** Literał pgvector → wektor JS. */
+export const fromPgVector = (v: string): number[] => JSON.parse(v) as number[];
 
 /** Wektor JS → literał pgvector. */
 export const toPgVector = (v: readonly number[]) => `[${v.map((x) => (Number.isFinite(x) ? x : 0)).join(',')}]`;

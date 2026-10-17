@@ -12,6 +12,7 @@ import { onboardingRoutes } from './routes/onboarding.ts';
 import { interestRoutes } from './routes/interests.ts';
 import { reportRoutes } from './routes/report.ts';
 import { accountRoutes } from './routes/account.ts';
+import { feedRoutes } from './routes/feed.ts';
 
 const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
 
@@ -85,7 +86,9 @@ export async function buildServer() {
   app.get('/api/config', async () => ({
     googleEnabled,
     email: { provider: emailProvider.name, localCapture: !emailProvider.deliversToRealRecipients },
-    contentEngine: 'not-configured' as const,
+    contentEngine: (env.EMBEDDING_PROVIDER === 'e5-local' ? 'live' : 'not-configured') as 'live' | 'not-configured',
+    summaries: Boolean(env.ANTHROPIC_API_KEY),
+    search: Boolean(env.BRAVE_SEARCH_SECRET_KEY),
   }));
 
   await app.register(profileRoutes, { prefix: '/api' });
@@ -93,6 +96,7 @@ export async function buildServer() {
   await app.register(interestRoutes, { prefix: '/api' });
   await app.register(reportRoutes, { prefix: '/api' });
   await app.register(accountRoutes, { prefix: '/api' });
+  await app.register(feedRoutes, { prefix: '/api' });
 
   return app;
 }

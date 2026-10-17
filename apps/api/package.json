@@ -9,7 +9,8 @@
     "migrate": "tsx --env-file-if-exists=../../.env src/migrate.ts",
     "typecheck": "tsc -p tsconfig.json",
     "worker": "tsx watch --env-file-if-exists=../../.env src/worker.ts",
-    "worker:start": "tsx --env-file-if-exists=../../.env src/worker.ts"
+    "worker:start": "tsx --env-file-if-exists=../../.env src/worker.ts",
+    "engine": "tsx --env-file-if-exists=../../.env src/cli/engine.ts"
   },
   "dependencies": {
     "@fastify/rate-limit": "^11.2.1",

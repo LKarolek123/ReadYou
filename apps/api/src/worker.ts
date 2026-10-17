@@ -10,10 +10,14 @@ import { pool } from './db.ts';
 import { env } from './env.ts';
 import { handlers } from './jobs/handlers.ts';
 import { claim, complete, fail, pruneJobs } from './jobs/queue.ts';
+import { purgeExpiredText, scheduleDiscovery } from './engine/discovery.ts';
+import { closeEngine } from './engine/context.ts';
+import { getEmbeddingProvider } from './providers.ts';
 
 const workerId = `${hostname()}:${process.pid}:${randomUUID().slice(0, 8)}`;
 const LEASE_MS = 5 * 60_000;
 const PRUNE_EVERY_MS = 60 * 60_000;
+const SCHEDULE_EVERY_MS = 10 * 60_000;
 
 let stopping = false;
 for (const sig of ['SIGINT', 'SIGTERM'] as const) {
@@ -31,11 +35,22 @@ function log(level: 'info' | 'warn' | 'error', msg: string, extra: Record<string
 async function main() {
   log('info', 'Worker uruchomiony', { kinds: Object.keys(handlers) });
   let lastPrune = 0;
+  let lastSchedule = 0;
   while (!stopping) {
     if (Date.now() - lastPrune > PRUNE_EVERY_MS) {
       lastPrune = Date.now();
       const pruned = await pruneJobs().catch((e: Error) => (log('warn', 'Sprzątanie nieudane', { error: e.message }), 0));
-      if (pruned) log('info', 'Usunięto stare zadania', { pruned });
+      const texts = await purgeExpiredText().catch((e: Error) => (log('warn', 'Sprzątanie tekstów nieudane', { error: e.message }), 0));
+      if (pruned || texts) log('info', 'Sprzątanie', { pruned, texts });
+    }
+    const provider = getEmbeddingProvider();
+    if (provider && Date.now() - lastSchedule > SCHEDULE_EVERY_MS) {
+      lastSchedule = Date.now();
+      try {
+        log('info', 'Harmonogram odkrywania', await scheduleDiscovery(provider));
+      } catch (e) {
+        log('warn', 'Harmonogram odkrywania nieudany', { error: (e as Error).message });
+      }
     }
 
     const job = await claim(workerId, LEASE_MS, Object.keys(handlers)).catch((e: Error) => {
@@ -62,6 +77,7 @@ async function main() {
       });
     }
   }
+  await closeEngine();
   await pool.end();
 }
 

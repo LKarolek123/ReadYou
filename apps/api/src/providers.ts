@@ -1,6 +1,6 @@
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { E5EmbeddingProvider, type EmbeddingProvider } from '@readyou/providers';
+import { AnthropicSummaryProvider, E5EmbeddingProvider, type EmbeddingProvider, type SummaryProvider } from '@readyou/providers';
 import { env } from './env.ts';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../..');
@@ -21,4 +21,17 @@ export function getEmbeddingProvider(): EmbeddingProvider | null {
 /** Podmiana dostawcy w testach (np. FakeEmbeddingProvider). */
 export function setEmbeddingProvider(p: EmbeddingProvider | null) {
   embedding = p;
+}
+
+let summary: SummaryProvider | undefined;
+
+/** Dostawca streszczeń. Bez klucza zwraca błąd konfiguracji przy wywołaniu (bez fikcyjnych streszczeń). */
+export function getSummaryProvider(): SummaryProvider {
+  summary ??= new AnthropicSummaryProvider(env.ANTHROPIC_API_KEY, env.SUMMARY_MODEL);
+  return summary;
+}
+
+/** Podmiana dostawcy w testach. */
+export function setSummaryProvider(p: SummaryProvider) {
+  summary = p;
 }
