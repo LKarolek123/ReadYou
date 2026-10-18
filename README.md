@@ -103,7 +103,8 @@ Limity kosztów (Brave, LLM, strony wydarzeń) i pozostałe ustawienia: `.env.ex
 - zmienne projektu: `DATABASE_URL` (Supabase → Connect → *Transaction pooler*, port 6543; bez niej API używa `POSTGRES_URL` z integracji), `DATABASE_CA_CERT` (opcjonalny — dla hostów Supabase wbudowany jest Supabase Root 2021 CA, więc TLS z pełną weryfikacją działa bez tej zmiennej), `BETTER_AUTH_SECRET` (typ Sensitive), `APP_URL`, `NODE_ENV=production`, `EMAIL_PROVIDER`, `DB_POOL_MAX=3`, `EMBEDDING_PROVIDER=disabled`;
 - klucze Anthropic i Brave **nie** trafiają do Vercela — używa ich tylko worker;
 - migracja `0011` odbiera rolom `anon`/`authenticated` dostęp do tabel i włącza RLS: publiczne Data API Supabase nie widzi danych ReadYou (aplikacja łączy się jako właściciel tabel z backendu);
-- region funkcji (`regions` w `vercel.json`) powinien odpowiadać regionowi bazy.
+- region funkcji (`regions` w `vercel.json`) powinien odpowiadać regionowi bazy;
+- worker produkcyjny: `.env.production.local` (wzór z komentarzami tworzy się ręcznie: `DATABASE_URL` Supabase, `APP_URL`, `NODE_ENV=production`, `EMAIL_PROVIDER`, `WORKER_POLL_MS=3000`) nadpisuje `.env`, z którego pochodzą klucze Anthropic i Brave. Uruchomienie: `npm run worker:prod`; nowe migracje na produkcji: `npm run db:migrate:prod`.
 
 **Wdrożenie na serwer** (jeszcze nie zrobione):
 - HTTPS i `APP_URL` z docelową domeną;

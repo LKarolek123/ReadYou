@@ -10,6 +10,8 @@
     "typecheck": "tsc -p tsconfig.json",
     "worker": "tsx watch --env-file-if-exists=../../.env src/worker.ts",
     "worker:start": "tsx --env-file-if-exists=../../.env src/worker.ts",
+    "worker:prod": "tsx --env-file-if-exists=../../.env --env-file=../../.env.production.local src/worker.ts",
+    "migrate:prod": "tsx --env-file-if-exists=../../.env --env-file=../../.env.production.local src/migrate.ts",
     "engine": "tsx --env-file-if-exists=../../.env src/cli/engine.ts"
   },
   "dependencies": {

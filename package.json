@@ -20,6 +20,8 @@
     "typecheck": "npm run typecheck --workspaces --if-present",
     "test": "vitest run",
     "worker": "npm run worker:start -w @readyou/api",
+    "worker:prod": "npm run worker:prod -w @readyou/api",
+    "db:migrate:prod": "npm run migrate:prod -w @readyou/api",
     "engine": "npm run engine -w @readyou/api --",
     "build:api": "node scripts/build-api.mjs"
   },
