@@ -1,0 +1,22 @@
+# Na serwerze: /opt/readyou/compose.yml (kopiowany przez scripts/deploy-worker.sh).
+# Osobny projekt compose „readyou” — nie dotyka innych kontenerów na serwerze. Bez portów: worker
+# tylko łączy się z bazą (Supabase, TLS) i usługami zewnętrznymi.
+name: readyou
+services:
+  worker:
+    build: ./src
+    image: readyou-worker:latest
+    restart: unless-stopped
+    env_file: ./worker.env
+    volumes:
+      - models:/cache/models
+    mem_limit: 1536m
+    cpus: 2
+    stop_grace_period: 2m
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: '3'
+volumes:
+  models:
