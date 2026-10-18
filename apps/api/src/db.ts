@@ -1,24 +1,13 @@
 import { Kysely, PostgresDialect, type ColumnType, type Generated, type JSONColumnType } from 'kysely';
 import pg from 'pg';
 import type { DfsState } from '@readyou/shared';
+import { poolConfig } from './db-config.ts';
 import { env } from './env.ts';
 
 // NUMERIC i BIGINT jako liczby JS (wartości w tym projekcie są małe).
 pg.types.setTypeParser(1700, (v) => Number(v));
 // DATE jako napis „RRRR-MM-DD” — lokalny dzień użytkownika nie może się przesunąć przez strefę serwera.
 pg.types.setTypeParser(1082, (v) => v);
-
-/**
- * Konfiguracja połączenia. Z DATABASE_CA_CERT: TLS z weryfikacją certyfikatu i nazwy hosta względem
- * podanego CA (Supabase podpisuje własnym CA). Parametry ssl* z URL-a są wtedy usuwane, bo pg
- * nadpisałby nimi opcję `ssl`.
- */
-export function poolConfig(connectionString: string, ca?: string): pg.PoolConfig {
-  if (!ca) return { connectionString };
-  const url = new URL(connectionString);
-  for (const key of [...url.searchParams.keys()]) if (key.startsWith('ssl')) url.searchParams.delete(key);
-  return { connectionString: url.toString(), ssl: { ca, rejectUnauthorized: true } };
-}
 
 // Na Vercelu wiele krótko żyjących instancji — mała pula (DB_POOL_MAX) i pooler bazy (tryb transakcyjny).
 export const pool = new pg.Pool({ ...poolConfig(env.DATABASE_URL, env.DATABASE_CA_CERT), max: env.DB_POOL_MAX });

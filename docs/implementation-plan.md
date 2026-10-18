@@ -204,6 +204,6 @@ Decyzje podjęte samodzielnie (właściciel zostawił pracę na noc):
 
 - Front statyczny i API jako jedna funkcja Vercel (`api/index.js` → `dist-api/vercel.mjs`); worker z embeddingami e5 (onnxruntime) nie mieści się w funkcji i działa osobno.
 - Baza: Supabase Postgres przez pooler w trybie transakcyjnym. Kod jest z nim zgodny: brak nazwanych prepared statements, tylko blokady `pg_advisory_xact_lock` (na czas transakcji), brak `LISTEN`/`SET` sesyjnych.
-- TLS: Supabase podpisuje certyfikaty własnym CA, więc `DATABASE_CA_CERT` daje weryfikację z `rejectUnauthorized: true`. Nie wyłączamy weryfikacji.
+- TLS: adres z panelu Supabase nie ma `sslmode`, więc pg łączyłby się bez szyfrowania. Dla hostów `*.supabase.com/.co` wbudowany jest publiczny Supabase Root 2021 CA (`apps/api/src/certs/supabase-ca.ts`, ważny do 2031-04-26) i TLS z `rejectUnauthorized: true`; `DATABASE_CA_CERT` nadpisuje go. Nie wyłączamy weryfikacji. Po wdrożeniu: Supabase → Enforce SSL.
 - Data API Supabase: migracja `0011` (RLS bez polityk + odebrane uprawnienia `anon`/`authenticated`, także domyślne dla przyszłych tabel). Klucz publishable/anon nie daje dostępu do żadnych danych; front go nie używa. Migracja `0012` przenosi pgvector do schematu `extensions` (tylko gdy jest w `search_path`, czyli na Supabase), żeby jego funkcje nie były wywoływalne przez `/rest/v1/rpc`.
 - `esbuild` w wersji zgodnej z Vite 8 (`0.28.x`) — starsza wersja blokowała `npm install` na Vercelu (konflikt peer).
