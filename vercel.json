@@ -4,6 +4,7 @@
   "installCommand": "npm ci",
   "buildCommand": "npm run build && npm run build:api",
   "outputDirectory": "apps/web/dist",
+  "regions": ["dub1"],
   "functions": {
     "api/index.js": {
       "maxDuration": 30,
