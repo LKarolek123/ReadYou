@@ -6,6 +6,8 @@ const schema = z.object({
   APP_URL: z.string().url().default('http://localhost:5173'),
   API_PORT: z.coerce.number().int().default(3001),
   DB_POOL_MAX: z.coerce.number().int().min(1).max(50).default(10),
+  // Certyfikat CA bazy (PEM, np. Supabase → Database Settings → SSL). Gdy ustawiony: TLS z pełną weryfikacją.
+  DATABASE_CA_CERT: z.string().optional().transform((v) => v?.replace(/\\n/g, '\n').trim() || undefined),
   BETTER_AUTH_SECRET: z.string().min(32, 'BETTER_AUTH_SECRET musi mieć co najmniej 32 znaki'),
   GOOGLE_CLIENT_ID: z.string().optional().transform((v) => v || undefined),
   GOOGLE_CLIENT_SECRET: z.string().optional().transform((v) => v || undefined),
@@ -61,6 +63,9 @@ const schema = z.object({
 
 // Zgodność wstecz: wcześniejsza nazwa zmiennej w .env (z literówką).
 if (!process.env.ANTHROPIC_API_KEY && process.env.ANTROPIC_SECRET_KEY) process.env.ANTHROPIC_API_KEY = process.env.ANTROPIC_SECRET_KEY;
+
+// Integracje Vercel (Supabase, Neon) dodają adres bazy jako POSTGRES_URL (przez pooler).
+if (!process.env.DATABASE_URL && process.env.POSTGRES_URL) process.env.DATABASE_URL = process.env.POSTGRES_URL;
 
 const parsed = schema.safeParse(process.env);
 if (!parsed.success) {

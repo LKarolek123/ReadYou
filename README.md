@@ -98,6 +98,13 @@ docs             plan, architektura, walidacja
 
 Limity kosztów (Brave, LLM, strony wydarzeń) i pozostałe ustawienia: `.env.example`. Decyzje i kalibracje: `docs/implementation-plan.md`.
 
+**Wdrożenie na Vercel + Supabase** (front i API; worker osobno):
+- projekt Vercel podpięty do repozytorium; ustawienia budowania pochodzą z `vercel.json` (funkcja `api/index.js`, bundle `npm run build:api`);
+- zmienne projektu: `DATABASE_URL` (Supabase → Connect → *Transaction pooler*, port 6543; bez niej API używa `POSTGRES_URL` z integracji), `DATABASE_CA_CERT` (certyfikat z Supabase → Database Settings → SSL; włącza pełną weryfikację TLS), `BETTER_AUTH_SECRET` (typ Sensitive), `APP_URL`, `NODE_ENV=production`, `EMAIL_PROVIDER`, `DB_POOL_MAX=3`, `EMBEDDING_PROVIDER=disabled`;
+- klucze Anthropic i Brave **nie** trafiają do Vercela — używa ich tylko worker;
+- migracja `0011` odbiera rolom `anon`/`authenticated` dostęp do tabel i włącza RLS: publiczne Data API Supabase nie widzi danych ReadYou (aplikacja łączy się jako właściciel tabel z backendu);
+- region funkcji (`regions` w `vercel.json`) powinien odpowiadać regionowi bazy.
+
 **Wdrożenie na serwer** (jeszcze nie zrobione):
 - HTTPS i `APP_URL` z docelową domeną;
 - `EMAIL_PROVIDER=smtp` z danymi usługi i zweryfikowaną domeną nadawcy;

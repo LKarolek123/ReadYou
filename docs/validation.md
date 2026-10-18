@@ -75,3 +75,9 @@ Znalezione i naprawione podczas sprawdzania:
 - **Przebieg na żywo** (`npm run engine -- report ola.test@example.com --send`, konto deweloperskie): 10 pozycji (6 tekstów, 4 wydarzenia), synteza Haiku z 3–4 zdaniami odwołującymi się do pozycji; wiadomość w Mailpit z wersją HTML i tekstową, nagłówki `List-Unsubscribe` / `List-Unsubscribe-Post`. Zrzut HTML przy 390 px czytelny.
 - Znalezione i poprawione: raport zdominowany jednym tematem (5 z 6 o Tesli → limit 2 na temat), godzina „00:00” przy wydarzeniach całodniowych, data otwarcia zamiast „trwa do …” przy wystawach, przesunięcie o dzień końca wydarzenia całodniowego, mianownik miesiąca w etykiecie („październik” → „października”).
 - **Niesprawdzone**: wysyłka przez produkcyjnego dostawcę SMTP (brak konfiguracji — świadomie: dev nie wysyła do realnych osób); dostarczenie o 20:00 w prawdziwym piątkowym przebiegu workera (sprawdzone testem harmonogramu i ręcznym podglądem „na teraz”); wypis jednym kliknięciem z prawdziwego klienta poczty.
+
+## Wdrożenie (2026-10-18)
+
+- Pierwsze wdrożenie na Vercel nie przeszło `npm install` (konflikt peer `esbuild@0.25` z Vite 8). Po podbiciu do `0.28.2`: `npm ci --dry-run`, `npm run build`, `npm run build:api` przechodzą lokalnie.
+- Migracja `0011_lock_public_api.sql` zastosowana lokalnie (bez ról Supabase — tylko RLS); 149/149 testów API przechodzi (aplikacja jako właściciel tabel omija RLS).
+- Niesprawdzone: połączenie z Supabase (brak `DATABASE_URL` w projekcie Vercel), weryfikacja TLS z certyfikatem Supabase, działanie wdrożonej funkcji.

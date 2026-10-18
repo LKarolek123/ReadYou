@@ -198,4 +198,12 @@ Decyzje podjęte samodzielnie (właściciel zostawił pracę na noc):
   - logowanie Google (klucze);
   - produkcyjny dostawca e-mail;
   - źródła wydarzeń dla miast innych niż Kraków;
-  - wdrożenie na serwer.
+  - wdrożenie workera na serwer.
+
+## Wdrożenie (Vercel + Supabase)
+
+- Front statyczny i API jako jedna funkcja Vercel (`api/index.js` → `dist-api/vercel.mjs`); worker z embeddingami e5 (onnxruntime) nie mieści się w funkcji i działa osobno.
+- Baza: Supabase Postgres przez pooler w trybie transakcyjnym. Kod jest z nim zgodny: brak nazwanych prepared statements, tylko blokady `pg_advisory_xact_lock` (na czas transakcji), brak `LISTEN`/`SET` sesyjnych.
+- TLS: Supabase podpisuje certyfikaty własnym CA, więc `DATABASE_CA_CERT` daje weryfikację z `rejectUnauthorized: true`. Nie wyłączamy weryfikacji.
+- Data API Supabase: migracja `0011` (RLS bez polityk + odebrane uprawnienia `anon`/`authenticated`, także domyślne dla przyszłych tabel). Klucz publishable/anon nie daje dostępu do żadnych danych; front go nie używa.
+- `esbuild` w wersji zgodnej z Vite 8 (`0.28.x`) — starsza wersja blokowała `npm install` na Vercelu (konflikt peer).
