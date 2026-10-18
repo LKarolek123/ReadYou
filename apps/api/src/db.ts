@@ -8,7 +8,8 @@ pg.types.setTypeParser(1700, (v) => Number(v));
 // DATE jako napis „RRRR-MM-DD” — lokalny dzień użytkownika nie może się przesunąć przez strefę serwera.
 pg.types.setTypeParser(1082, (v) => v);
 
-export const pool = new pg.Pool({ connectionString: env.DATABASE_URL, max: 10 });
+// Na Vercelu wiele krótko żyjących instancji — mała pula (DB_POOL_MAX) i pooler bazy (Neon -pooler).
+export const pool = new pg.Pool({ connectionString: env.DATABASE_URL, max: env.DB_POOL_MAX });
 
 type Timestamp = ColumnType<Date, Date | string | undefined, Date | string>;
 type NullableTimestamp = ColumnType<Date | null, Date | string | null | undefined, Date | string | null>;

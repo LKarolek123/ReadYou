@@ -5,6 +5,7 @@ const schema = z.object({
   DATABASE_URL: z.string().url(),
   APP_URL: z.string().url().default('http://localhost:5173'),
   API_PORT: z.coerce.number().int().default(3001),
+  DB_POOL_MAX: z.coerce.number().int().min(1).max(50).default(10),
   BETTER_AUTH_SECRET: z.string().min(32, 'BETTER_AUTH_SECRET musi mieć co najmniej 32 znaki'),
   GOOGLE_CLIENT_ID: z.string().optional().transform((v) => v || undefined),
   GOOGLE_CLIENT_SECRET: z.string().optional().transform((v) => v || undefined),

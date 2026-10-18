@@ -91,8 +91,6 @@ export async function buildServer() {
     googleEnabled,
     email: { provider: emailProvider.name, localCapture: !emailProvider.deliversToRealRecipients },
     contentEngine: (env.EMBEDDING_PROVIDER === 'e5-local' ? 'live' : 'not-configured') as 'live' | 'not-configured',
-    summaries: Boolean(env.ANTHROPIC_API_KEY),
-    search: Boolean(env.BRAVE_SEARCH_SECRET_KEY),
   }));
 
   await app.register(profileRoutes, { prefix: '/api' });

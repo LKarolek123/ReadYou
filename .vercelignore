@@ -1,0 +1,13 @@
+# Nigdy nie wysyłamy do Vercela sekretów ani lokalnych danych — konfiguracja produkcji żyje
+# wyłącznie w zmiennych środowiskowych projektu Vercel (oznaczonych jako wrażliwe).
+.env
+.env.*
+!.env.example
+.cache
+.claude
+**/node_modules
+**/dist
+dist-api
+.vercel
+*.log
+docker-compose.yml

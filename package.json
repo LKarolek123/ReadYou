@@ -20,11 +20,13 @@
     "typecheck": "npm run typecheck --workspaces --if-present",
     "test": "vitest run",
     "worker": "npm run worker:start -w @readyou/api",
-    "engine": "npm run engine -w @readyou/api --"
+    "engine": "npm run engine -w @readyou/api --",
+    "build:api": "node scripts/build-api.mjs"
   },
   "devDependencies": {
     "@types/node": "^22.20.5",
     "concurrently": "^10.0.6",
+    "esbuild": "^0.25.10",
     "typescript": "^5.9.3",
     "vitest": "^5.0.4"
   }

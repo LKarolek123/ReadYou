@@ -6,3 +6,8 @@ dist/
 coverage/
 .vite/
 .cache/
+dist-api/
+.vercel/
+
+.vercel
+.env*
