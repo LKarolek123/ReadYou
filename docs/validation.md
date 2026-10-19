@@ -48,7 +48,7 @@ Znalezione i naprawione podczas sprawdzania:
 ## Niesprawdzone / wymaga konfiguracji
 
 - **Logowanie przez Google**: brak `GOOGLE_CLIENT_ID/SECRET`, więc przycisk jest ukryty. Ścieżki nie testowano.
-- **Produkcyjny dostawca e-mail**: nieskonfigurowany. Wiadomości trafiają wyłącznie do lokalnego Mailpit.
+- **Produkcyjny dostawca e-mail**: adapter `smtp` gotowy, konfigurację wgrywa `scripts/push-email-env.mjs` (najpierw weryfikuje logowanie SMTP). Do czasu jej wgrania produkcja ma `EMAIL_PROVIDER=disabled`, a UI mówi wprost, że reset hasła i weryfikacja są niedostępne. Lokalnie wiadomości trafiają wyłącznie do Mailpit.
 - **Reset hasła**: przetestowane tylko wysłanie wiadomości do Mailpit (`requestPasswordReset`), bez pełnego przejścia w przeglądarce.
 - **Lokalny model e5 (12.10.2026)**: sprawdzony ręcznie, nie w `npm test`. Pierwsze pobranie zajęło ~35 s. Worker przeliczył 9 wektorów konta deweloperskiego w ~2,2 s (`vector_dims = 384`). Nagłówki demonstracyjne trafiły w odpowiednie gałęzie (szachy → „Szachy”, lawiny w Alpach → „Alpy”, Tesla → „Tesla (samochody)”, hackathon → „Hackathony”). Różnice podobieństwa są jednak małe — patrz obserwacja w `implementation-plan.md`.
 - **Odkrywanie na prawdziwych danych (12.10.2026)**: 10 kanałów RSS + 14 zapytań Brave dla 7 tematów konta deweloperskiego → 445 pozycji w katalogu; pula 20 pozycji: Tesla 4, Agenci AI 4, Gry i szachy 4, RAG 3, Sztuczna inteligencja 2, Alpy 1, Hackathony 1 (HackYeah 2026), Informatyka 1. Ocena trafności ręczna, jednej osoby.

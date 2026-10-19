@@ -108,11 +108,11 @@ Limity kosztów (Brave, LLM, strony wydarzeń) i pozostałe ustawienia: `.env.ex
   1. `node scripts/push-worker-env.mjs` — wybrane zmienne z `.env` + `.env.production.local` → `/opt/readyou/worker.env` (600, przez SSH/stdin);
   2. `scripts/rotate-auth-secret.sh` — nowy `BETTER_AUTH_SECRET` naraz w Vercelu i na serwerze (worker podpisuje linki wypisu), potem redeploy API;
   3. `scripts/deploy-worker.sh` — zacommitowany kod (`git archive`) → serwer, `docker compose build && up -d`. Logi: `ssh <host> 'cd /opt/readyou && docker compose logs -f worker'`;
+- e-maile (reset hasła, potwierdzenie adresu, raport): w `.env.production.local` `EMAIL_PROVIDER=smtp`, `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER`, `SMTP_PASS`, `EMAIL_FROM`, potem `node scripts/push-email-env.mjs` — sprawdza logowanie SMTP, ustawia zmienne w Vercelu (`SMTP_PASS` jako Sensitive) i na serwerze, przeładowuje workera; na końcu redeploy API. Gmail: `smtp.gmail.com`, port 465, `SMTP_SECURE=true`, hasło aplikacji (wymaga weryfikacji dwuetapowej), `EMAIL_FROM` = ten sam adres; limit ok. 500 wiadomości dziennie. Przy większym ruchu — usługa transakcyjna z własną domeną (SPF/DKIM). Na Vercelu e-maile auth wysyłane po odpowiedzi są podtrzymywane przez `waitUntil`;
 - worker lokalnie (zamiast serwera): `.env.production.local` (wzór z komentarzami tworzy się ręcznie: `DATABASE_URL` Supabase, `APP_URL`, `NODE_ENV=production`, `EMAIL_PROVIDER`, `WORKER_POLL_MS=3000`) nadpisuje `.env`, z którego pochodzą klucze Anthropic i Brave. Uruchomienie: `npm run worker:prod`; nowe migracje na produkcji: `npm run db:migrate:prod`.
 
 **Wdrożenie na serwer** (jeszcze nie zrobione):
 - HTTPS i `APP_URL` z docelową domeną;
-- `EMAIL_PROVIDER=smtp` z danymi usługi i zweryfikowaną domeną nadawcy;
 - `NODE_ENV=production`, czyli ciasteczka `Secure`;
 - uruchomione trzy procesy: API, worker i serwowanie zbudowanego frontu (`npm run build`).
 

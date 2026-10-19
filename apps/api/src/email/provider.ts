@@ -121,7 +121,17 @@ export function setEmailProviderForTests(p: EmailProvider) {
   emailProvider = p;
 }
 
+let keepAlive: (task: Promise<unknown>) => void = () => {};
+
+/**
+ * Środowisko serverless (Vercel) może zamrozić funkcję zaraz po odpowiedzi — tam rejestrujemy zadanie
+ * przez `waitUntil`, żeby wysyłka w tle dobiegła końca. W zwykłym procesie Node nic nie trzeba.
+ */
+export function setBackgroundTaskHandler(fn: (task: Promise<unknown>) => void) {
+  keepAlive = fn;
+}
+
 /** Wysyłka „fire and forget” dla e-maili auth (zalecenie Better Auth: bez await, przeciw timing attacks). */
 export function sendInBackground(message: EmailMessage, log: (err: unknown) => void) {
-  emailProvider.send(message).catch(log);
+  keepAlive(emailProvider.send(message).catch(log));
 }

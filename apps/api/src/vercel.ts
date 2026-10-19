@@ -6,7 +6,12 @@
  * proces (lokalnie albo na serwerze) podłączony do tej samej bazy.
  */
 import type { IncomingMessage, ServerResponse } from 'node:http';
+import { waitUntil } from '@vercel/functions';
+import { setBackgroundTaskHandler } from './email/provider.ts';
 import { buildServer } from './server.ts';
+
+// E-maile auth (reset hasła, weryfikacja) wychodzą po odpowiedzi — funkcja musi na nie poczekać.
+setBackgroundTaskHandler(waitUntil);
 
 const app = await buildServer();
 await app.ready();
