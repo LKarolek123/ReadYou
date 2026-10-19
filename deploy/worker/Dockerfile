@@ -4,8 +4,10 @@
 FROM node:22-bookworm-slim
 
 WORKDIR /app
+# ONNXRUNTIME_NODE_INSTALL=skip: bez pobierania bibliotek CUDA z NuGet (brak GPU; wersja CPU jest w paczce npm).
 ENV NODE_ENV=production \
-    EMBEDDING_CACHE_DIR=/cache/models
+    EMBEDDING_CACHE_DIR=/cache/models \
+    ONNXRUNTIME_NODE_INSTALL=skip
 
 COPY . .
 # devDependencies też (tsx uruchamia TypeScript bez osobnego kroku budowania).
