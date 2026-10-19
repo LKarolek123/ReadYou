@@ -55,7 +55,7 @@ export interface Me {
 
 export interface PublicConfig {
   googleEnabled: boolean;
-  email: { provider: string; localCapture: boolean };
+  email: { provider: string; enabled: boolean; localCapture: boolean };
   contentEngine: 'not-configured' | 'demo' | 'live';
 }
 

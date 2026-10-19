@@ -18,7 +18,7 @@ import {
 import { ACTIVITY_TYPES, TIME_SLOTS, WEEKDAYS, weekdayName, type ActivityType, type ProfilePatch, type ReportSummary, type ReportView } from '@readyou/shared';
 import { api, ApiError, type Me } from '../../lib/api.ts';
 import { authClient } from '../../lib/auth-client.ts';
-import { keys, useMe, usePatchProfile, usePatchReport, useReportSubscription } from '../../lib/queries.ts';
+import { keys, useConfig, useMe, usePatchProfile, usePatchReport, useReportSubscription } from '../../lib/queries.ts';
 import { PageHeader } from '../../components/AppShell.tsx';
 import { Alert, Button, Card, Chip, Segmented, Spinner, TextField } from '../../components/ui.tsx';
 import { TagEditor } from '../../components/TagEditor.tsx';
@@ -59,6 +59,7 @@ function Profile({ me }: { me: Me }) {
   const p = me.profile;
   const [editing, setEditing] = useState(false);
   const [verificationSent, setVerificationSent] = useState(false);
+  const config = useConfig();
 
   const resetLearned = useMutation({
     mutationFn: () => api.post<{ removed: number }>('/me/interests/reset-learned'),
@@ -103,7 +104,9 @@ function Profile({ me }: { me: Me }) {
                 <div className="mt-3">
                   <Alert tone="warning">
                     Adres niepotwierdzony.{' '}
-                    {verificationSent ? (
+                    {config.data?.email.enabled === false ? (
+                      <span>Wysyłka e-maili nie jest jeszcze skonfigurowana — potwierdzenie będzie możliwe później.</span>
+                    ) : verificationSent ? (
                       <strong>Wysłano link — sprawdź skrzynkę.</strong>
                     ) : (
                       <button

@@ -16,7 +16,7 @@ import {
   type Weekday,
 } from '@readyou/shared';
 import { api, ApiError, type AmbiguityDetails, type Me, type OnboardingView } from '../../lib/api.ts';
-import { keys, useMe, useOnboarding, usePatchProfile, usePatchReport } from '../../lib/queries.ts';
+import { keys, useConfig, useMe, useOnboarding, usePatchProfile, usePatchReport } from '../../lib/queries.ts';
 import { authClient } from '../../lib/auth-client.ts';
 import { Alert, Button, Chip, Spinner, TextField } from '../../components/ui.tsx';
 import { SenseDialog } from '../../components/SenseDialog.tsx';
@@ -759,6 +759,7 @@ function ReportStep({ me, prev, onFinish }: StepProps & { onFinish: () => Promis
   const [resent, setResent] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const verified = me.user.emailVerified;
+  const config = useConfig();
 
   const finish = async () => {
     setFinishing(true);
@@ -812,7 +813,9 @@ function ReportStep({ me, prev, onFinish }: StepProps & { onFinish: () => Promis
           <Alert tone="warning">
             Raport wymaga potwierdzonego adresu <strong>{me.user.email}</strong>. Kliknij link z wiadomości, a potem włącz raport w
             Profilu.{' '}
-            {resent ? (
+            {config.data?.email.enabled === false ? (
+              <span>Wysyłka e-maili nie jest jeszcze skonfigurowana — link wyślemy, gdy będzie dostępna.</span>
+            ) : resent ? (
               <span className="font-semibold">Wysłano ponownie.</span>
             ) : (
               <button type="button" onClick={resend} className="font-semibold underline">

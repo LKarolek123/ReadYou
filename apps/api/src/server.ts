@@ -89,7 +89,8 @@ export async function buildServer() {
   // Publiczna konfiguracja dla UI — bez sekretów.
   app.get('/api/config', async () => ({
     googleEnabled,
-    email: { provider: emailProvider.name, localCapture: !emailProvider.deliversToRealRecipients },
+    // enabled=false: wiadomości (weryfikacja, reset hasła, raport) nie są nigdzie wysyłane — UI mówi to wprost.
+    email: { provider: emailProvider.name, enabled: emailProvider.name !== 'disabled', localCapture: emailProvider.name === 'smtp-dev' },
     contentEngine: (env.EMBEDDING_PROVIDER === 'e5-local' ? 'live' : 'not-configured') as 'live' | 'not-configured',
   }));
 

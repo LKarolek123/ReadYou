@@ -158,6 +158,8 @@ export function RegisterPage() {
 }
 
 export function ForgotPasswordPage() {
+  const config = useConfig();
+  const emailDisabled = config.data?.email.enabled === false;
   const [email, setEmail] = useState('');
   const [sent, setSent] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -176,7 +178,17 @@ export function ForgotPasswordPage() {
 
   return (
     <AuthLayout title="Reset hasła" subtitle="Podaj e-mail konta — wyślemy link do ustawienia nowego hasła.">
-      {sent ? (
+      {emailDisabled ? (
+        <div className="space-y-4">
+          <Alert tone="warning">
+            Wysyłka e-maili nie jest jeszcze skonfigurowana, więc nie możemy wysłać linku do resetu hasła. Spróbuj później albo
+            skontaktuj się z administratorem.
+          </Alert>
+          <Link to="/login" className="block text-center font-semibold text-violet hover:underline">
+            Wróć do logowania
+          </Link>
+        </div>
+      ) : sent ? (
         <div className="space-y-4">
           <Alert tone="success">
             <span className="inline-flex items-center gap-2 font-semibold">
