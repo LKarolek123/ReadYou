@@ -104,7 +104,11 @@ Limity kosztów (Brave, LLM, strony wydarzeń) i pozostałe ustawienia: `.env.ex
 - klucze Anthropic i Brave **nie** trafiają do Vercela — używa ich tylko worker;
 - migracja `0011` odbiera rolom `anon`/`authenticated` dostęp do tabel i włącza RLS: publiczne Data API Supabase nie widzi danych ReadYou (aplikacja łączy się jako właściciel tabel z backendu);
 - region funkcji (`regions` w `vercel.json`) powinien odpowiadać regionowi bazy;
-- worker produkcyjny: `.env.production.local` (wzór z komentarzami tworzy się ręcznie: `DATABASE_URL` Supabase, `APP_URL`, `NODE_ENV=production`, `EMAIL_PROVIDER`, `WORKER_POLL_MS=3000`) nadpisuje `.env`, z którego pochodzą klucze Anthropic i Brave. Uruchomienie: `npm run worker:prod`; nowe migracje na produkcji: `npm run db:migrate:prod`.
+- worker produkcyjny działa na serwerze (Docker, projekt compose `readyou` w `/opt/readyou`, bez portów, limit 1,5 GB RAM, `restart: unless-stopped`):
+  1. `node scripts/push-worker-env.mjs` — wybrane zmienne z `.env` + `.env.production.local` → `/opt/readyou/worker.env` (600, przez SSH/stdin);
+  2. `scripts/rotate-auth-secret.sh` — nowy `BETTER_AUTH_SECRET` naraz w Vercelu i na serwerze (worker podpisuje linki wypisu), potem redeploy API;
+  3. `scripts/deploy-worker.sh` — zacommitowany kod (`git archive`) → serwer, `docker compose build && up -d`. Logi: `ssh <host> 'cd /opt/readyou && docker compose logs -f worker'`;
+- worker lokalnie (zamiast serwera): `.env.production.local` (wzór z komentarzami tworzy się ręcznie: `DATABASE_URL` Supabase, `APP_URL`, `NODE_ENV=production`, `EMAIL_PROVIDER`, `WORKER_POLL_MS=3000`) nadpisuje `.env`, z którego pochodzą klucze Anthropic i Brave. Uruchomienie: `npm run worker:prod`; nowe migracje na produkcji: `npm run db:migrate:prod`.
 
 **Wdrożenie na serwer** (jeszcze nie zrobione):
 - HTTPS i `APP_URL` z docelową domeną;
