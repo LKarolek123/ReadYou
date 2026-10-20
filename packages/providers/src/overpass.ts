@@ -139,7 +139,13 @@ export class OverpassPlacesProvider {
   async places(city: string, selectors: readonly OsmSelector[]): Promise<OsmPlace[]> {
     if (!selectors.length) return [];
     const url = `${this.endpoint}?data=${encodeURIComponent(placesQuery(city, selectors))}`;
-    const res = await this.fetcher.fetch(url, ['application/json']);
+    const res = await this.fetcher.fetch(url, ['application/json']).catch((err: unknown) => {
+      // Zerwane połączenie lub timeout przy przeciążonym serwerze — jak 502: wracamy po kilku godzinach.
+      if (err instanceof TypeError || (err as { name?: string }).name === 'TimeoutError') {
+        throw new ProviderUnavailableError(`Overpass: ${(err as Error).message}`, 3 * 60 * 60_000);
+      }
+      throw err;
+    });
     if (res.status === 429 || res.status === 504) throw new ProviderRateLimitError(`Overpass: HTTP ${res.status}`, 30 * 60_000);
     // Publiczny serwer przy pełnej kolejce odpowiada 502/503, a klientów automatycznych odsyła z 406 —
     // to stan serwera, nie błąd zapytania: wracamy po kilku godzinach zamiast ponawiać od razu.
