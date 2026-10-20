@@ -11,3 +11,4 @@ dist-api/
 
 .vercel
 .env*
+!.env.example
