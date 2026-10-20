@@ -88,6 +88,23 @@ describe('kolejka zadań', () => {
     expect(row.status).toBe('failed');
   });
 
+  it('zadanie okresowe nie wraca po wykonaniu w tym samym okresie; po porażce dopiero po przerwie', async () => {
+    const once = { dedupeKey: `${KIND}:okres`, oncePerKey: { retryFailedAfterMs: 60 * 60_000 } };
+    await queue.enqueue(KIND, {}, once);
+    const j = (await queue.claim('w', 60_000, [KIND]))!;
+    await queue.enqueue(KIND, {}, once); // w trakcie
+    await queue.complete(j, 'w');
+    await queue.enqueue(KIND, {}, once); // po sukcesie (harmonogram co kilka minut)
+    expect(await db.selectFrom('job').select('id').where('kind', '=', KIND).execute()).toHaveLength(1);
+
+    await db.updateTable('job').set({ status: 'failed', updated_at: new Date() }).where('id', '=', j.id).execute();
+    await queue.enqueue(KIND, {}, once); // świeża porażka — jeszcze nie
+    expect(await db.selectFrom('job').select('id').where('kind', '=', KIND).execute()).toHaveLength(1);
+    await db.updateTable('job').set({ updated_at: new Date(Date.now() - 2 * 60 * 60_000) }).where('id', '=', j.id).execute();
+    await queue.enqueue(KIND, {}, once);
+    expect(await db.selectFrom('job').select('id').where('kind', '=', KIND).where('status', '=', 'queued').execute()).toHaveLength(1);
+  });
+
   it('Retry-After nie zużywa próby', async () => {
     await queue.enqueue(KIND, {}, { maxAttempts: 1 });
     const j = (await queue.claim('w', 60_000, [KIND]))!;

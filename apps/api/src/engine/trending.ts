@@ -291,5 +291,5 @@ export async function runTrending(provider: EmbeddingProvider) {
 /** Co godzinę (deduplikacja per godzina UTC). */
 export async function scheduleTrending() {
   const hour = new Date().toISOString().slice(0, 13);
-  await enqueue(TRENDING_JOB, {}, { dedupeKey: `${TRENDING_JOB}:${hour}` });
+  await enqueue(TRENDING_JOB, {}, { dedupeKey: `${TRENDING_JOB}:${hour}`, oncePerKey: { retryFailedAfterMs: 20 * 60_000 } });
 }

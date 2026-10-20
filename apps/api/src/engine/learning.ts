@@ -243,6 +243,6 @@ export async function scheduleLearning() {
   const { enqueue } = await import('../jobs/queue.ts');
   const users = await db.selectFrom('user_interest').select('user_id').distinct().where('state', '=', 'learned').execute();
   const day = new Date().toISOString().slice(0, 10);
-  for (const u of users) await enqueue(RECOMPUTE_LEARNED_JOB, { userId: u.user_id }, { dedupeKey: `${RECOMPUTE_LEARNED_JOB}:${u.user_id}:${day}` });
+  for (const u of users) await enqueue(RECOMPUTE_LEARNED_JOB, { userId: u.user_id }, { dedupeKey: `${RECOMPUTE_LEARNED_JOB}:${u.user_id}:${day}`, oncePerKey: { retryFailedAfterMs: 6 * 60 * 60_000 } });
   return users.length;
 }

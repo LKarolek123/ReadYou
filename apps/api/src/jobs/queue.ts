@@ -16,6 +16,12 @@ export interface EnqueueOptions {
   dedupeKey?: string;
   runAt?: Date;
   maxAttempts?: number;
+  /**
+   * Zadanie okresowe (klucz zawiera okres, np. dzień lub tydzień): harmonogram działa co kilka minut,
+   * więc bez tego zadanie wracałoby po każdym zakończeniu. Pomija zlecenie, gdy zadanie o tym kluczu
+   * czeka, trwa albo już się udało; po porażce — dopiero po `retryFailedAfterMs`.
+   */
+  oncePerKey?: { retryFailedAfterMs: number };
 }
 
 /** Wyjątek handlera: ponów później (np. Retry-After dostawcy), bez zużywania limitu prób ponad 1. */
@@ -34,6 +40,17 @@ export async function enqueue(
   opts: EnqueueOptions = {},
   executor: Kysely<Database> = db,
 ): Promise<void> {
+  if (opts.oncePerKey && opts.dedupeKey) {
+    const failedSince = new Date(Date.now() - opts.oncePerKey.retryFailedAfterMs);
+    const prior = await executor
+      .selectFrom('job')
+      .select('id')
+      .where('dedupe_key', '=', opts.dedupeKey)
+      .where((eb) => eb.or([eb('status', 'in', ['queued', 'running', 'done']), eb.and([eb('status', '=', 'failed'), eb('updated_at', '>', failedSince)])]))
+      .limit(1)
+      .executeTakeFirst();
+    if (prior) return;
+  }
   await executor
     .insertInto('job')
     .values({

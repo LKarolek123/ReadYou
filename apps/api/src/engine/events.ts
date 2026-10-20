@@ -647,13 +647,13 @@ export async function scheduleEvents() {
   let sources = 0;
   for (const city of cities) {
     for (const s of eventSourcesFor(city)) {
-      await enqueue(EVENT_JOBS.ingestSource, { url: s.url, city }, { dedupeKey: `${EVENT_JOBS.ingestSource}:${s.url}:${day}` });
+      await enqueue(EVENT_JOBS.ingestSource, { url: s.url, city }, { dedupeKey: `${EVENT_JOBS.ingestSource}:${s.url}:${day}`, oncePerKey: { retryFailedAfterMs: 6 * 60 * 60_000 } });
       sources++;
     }
     if (env.BRAVE_SEARCH_SECRET_KEY && env.EVENT_SEARCH_DAILY_QUERIES > 0) {
-      await enqueue(EVENT_JOBS.searchEvents, { city }, { dedupeKey: `${EVENT_JOBS.searchEvents}:${cityKey(city)}:${day}` });
+      await enqueue(EVENT_JOBS.searchEvents, { city }, { dedupeKey: `${EVENT_JOBS.searchEvents}:${cityKey(city)}:${day}`, oncePerKey: { retryFailedAfterMs: 6 * 60 * 60_000 } });
     }
-    await enqueue(EVENT_JOBS.ingestPlaces, { city }, { dedupeKey: `${EVENT_JOBS.ingestPlaces}:${cityKey(city)}:${week}` });
+    await enqueue(EVENT_JOBS.ingestPlaces, { city }, { dedupeKey: `${EVENT_JOBS.ingestPlaces}:${cityKey(city)}:${week}`, oncePerKey: { retryFailedAfterMs: 24 * 60 * 60_000 } });
   }
   return { cities: cities.length, sources };
 }

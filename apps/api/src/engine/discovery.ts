@@ -415,14 +415,14 @@ export async function scheduleDiscovery(provider: EmbeddingProvider) {
   const topics = await db.selectFrom('topic').selectAll().where('key', 'in', keys.length ? keys : ['']).execute();
   const slot = Math.floor(Date.now() / FEED_INTERVAL_MS);
   const feeds = new Set(topics.flatMap((t) => feedsFor(t.node_key)));
-  for (const f of feeds) await enqueue(JOBS.ingestFeed, { feedUrl: f }, { dedupeKey: `${JOBS.ingestFeed}:${f}:${slot}` });
+  for (const f of feeds) await enqueue(JOBS.ingestFeed, { feedUrl: f }, { dedupeKey: `${JOBS.ingestFeed}:${f}:${slot}`, oncePerKey: { retryFailedAfterMs: 30 * 60_000 } });
   let searches = 0;
   if (env.BRAVE_SEARCH_SECRET_KEY) {
     const day = new Date().toISOString().slice(0, 10);
     for (const t of topics) {
       if (!queriesFor(t).length) continue;
       if (t.last_search_at && Date.now() - t.last_search_at.getTime() < SEARCH_INTERVAL_MS) continue;
-      await enqueue(JOBS.searchTopic, { topicKey: t.key }, { dedupeKey: `${JOBS.searchTopic}:${t.key}:${day}` });
+      await enqueue(JOBS.searchTopic, { topicKey: t.key }, { dedupeKey: `${JOBS.searchTopic}:${t.key}:${day}`, oncePerKey: { retryFailedAfterMs: 6 * 60 * 60_000 } });
       searches++;
     }
   }
@@ -479,7 +479,7 @@ async function retryStaleExtractions() {
     .execute();
   const hour = new Date().toISOString().slice(0, 13);
   for (const s of stale) {
-    await enqueue(JOBS.extractContent, { contentId: s.id }, { dedupeKey: `${JOBS.extractContent}:${s.id}:${hour}` });
+    await enqueue(JOBS.extractContent, { contentId: s.id }, { dedupeKey: `${JOBS.extractContent}:${s.id}:${hour}`, oncePerKey: { retryFailedAfterMs: 60 * 60_000 } });
   }
   return stale.length;
 }

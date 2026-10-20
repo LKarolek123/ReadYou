@@ -60,7 +60,7 @@ Znalezione i naprawione podczas sprawdzania:
 ## Wydarzenia — sprawdzenia ręczne (18.10.2026)
 
 - **Pobieranie na żywo (Kraków, 11 stron organizatorów)**: Jazz It Up (JSON-LD) 16 wydarzeń w Krakowie, 1 odrzucone poza miastem (Stary Sącz), 31 zakończonych; Tauron Arena 8 (JSON-LD ze stron szczegółów); Teatr Ludowy 17, AGH 19, Kwadrat 10, Alchemia 8, Filharmonia 6, Muzeum Krakowa 3, kalendarium krakow.pl 3 (AI z cytatami). Klub Studio i Na Miasteczku: 0 (lista ładowana skryptem). Jedna strona (AGH) raz zwróciła ucięty JSON modelu — zadanie się ponawia. Koszt AI kilku przebiegów testowych: ~0,05 $.
-- **OSM (Overpass)**: 13 miejsc dla tematów kont deweloperskich (szkoły tańca, hackerspace’y).
+- **OSM (Overpass)**: 13 miejsc dla tematów kont deweloperskich (szkoły tańca, hackerspace’y). Produkcja (20.10): 127 nieudanych zadań `ingest_places` (HTTP 406/502 — przeciążony publiczny serwer i zbyt częste zapytania z powodu ponownego zlecania zadań okresowych); poprawione `oncePerKey` + ponowienie za 3 h, test `engine-jobs` „zadanie okresowe nie wraca…”.
 - **Interfejs** (Chrome przez Playwright, 360 px i 1280 px): Dzisiaj / Ten tydzień / Kluby i miejsca, panel szczegółów wydarzenia (Kiedy, Gdzie, Cena, Zapisy, źródło i data weryfikacji), brak błędów konsoli, brak poziomego przewijania. Znalezione i poprawione: HTML zakodowany encjami w opisie (Tauron), sesje cyklu „trwające” do końca cyklu (Jazz It Up), cykliczne spotkania kwiecień–grudzień w „Ten tydzień”, wydarzenie z gminy ościennej z kalendarium krakow.pl, błąd 500 dla osoby bez miasta.
 - **Niesprawdzone**: wyszukiwanie wydarzeń przez Brave (`search_events`) — kod i limity gotowe, bez przebiegu na żywo; trafność dopasowania wydarzeń do zainteresowań oceniona tylko na kilku przykładach.
 
